@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { useState, useEffect } from 'react';
+// import { supabase } from '../../lib/supabase';
 import { LeadsearchMap } from './LeadsearchMap';
 import { AnalysisResults } from './AnalysisResults';
 import { getProvincias, getCantones, getParroquias } from '@lobo.cyber.ec/ecuador-geo';

@@ -17,7 +17,7 @@ export const BranchManager = () => {
     const [name, setName] = useState('');
     const [provinciaId, setProvinciaId] = useState('');
     const [cantonId, setCantonId] = useState('');
-    const [parroquiaId, setParroquiaId] = useState('');
+    const [parroquiaId] = useState('');
     const [address, setAddress] = useState('');
     const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
     const [isMain, setIsMain] = useState(false);

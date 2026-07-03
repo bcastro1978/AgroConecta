@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Button } from '../ui/button';
+// import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
-import { Sprout, Mail, Lock, LogIn, ShieldCheck, Sparkles, Activity } from 'lucide-react';
+import { Mail, Lock, LogIn, ShieldCheck, Sparkles, Activity } from 'lucide-react';
 
 export const LoginPage = () => {
     const [email, setEmail] = useState('');

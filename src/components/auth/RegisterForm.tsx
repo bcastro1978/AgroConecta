@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, User, Mail, Lock, Briefcase, Navigation, Map as MapIcon, MousePointer2, ShieldCheck, Sparkles, Activity, CheckCircle2, ChevronRight, ChevronLeft, Phone } from 'lucide-react';
+import { MapPin, User, Mail, Lock, Briefcase, Navigation, MousePointer2, ShieldCheck, Activity, CheckCircle2, ChevronLeft, Phone } from 'lucide-react';
 import type { UserRole } from '../../types';
 import { ECUADOR_LOCATIONS } from '../../lib/locationData';
 import { MapSelector } from '../ui/MapSelector';
