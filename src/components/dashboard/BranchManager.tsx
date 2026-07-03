@@ -181,7 +181,7 @@ export const BranchManager = () => {
                         <div className="col-span-full py-12 text-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                             <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                             <p className="text-gray-500">No tienes sucursales registradas aún.</p>
-                            <Button variant="link" onClick={() => setAdding(true)}>Registra tu primera sede</Button>
+                            <Button variant="ghost" onClick={() => setAdding(true)}>Registra tu primera sede</Button>
                         </div>
                     ) : (
                         branches.map(branch => (

@@ -10,7 +10,7 @@ import { AgronomicHealth } from './copernicus/AgronomicHealth';
 import { CropDiscovery } from './copernicus/CropDiscovery';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
-import { LogOut, Sprout, PlusCircle, Inbox, MapPin, TrendingUp, Target, Users, Map, Activity, BrainCircuit, Sparkles } from 'lucide-react';
+import { LogOut, PlusCircle, Inbox, TrendingUp, Target, Users, Map, Activity, BrainCircuit, Sparkles } from 'lucide-react';
 
 export const ProducerDashboard = () => {
     const { profile } = useAuth();

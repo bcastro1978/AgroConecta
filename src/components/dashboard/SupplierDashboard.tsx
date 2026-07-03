@@ -6,7 +6,7 @@ import { HeatmapDemand } from './copernicus/HeatmapDemand';
 import { B2BLeadsMap } from '../../pages/B2BLeadsMap';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
-import { LogOut, Truck, PlusCircle, Inbox, MapPin, Satellite, Map as MapIcon, Activity, TrendingUp, Sparkles, BrainCircuit } from 'lucide-react';
+import { LogOut, Truck, PlusCircle, Inbox, Satellite, Map as MapIcon, Activity, Sparkles, BrainCircuit } from 'lucide-react';
 import { BranchManager } from './BranchManager';
 
 export const SupplierDashboard = () => {

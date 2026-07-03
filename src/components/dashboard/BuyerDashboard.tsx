@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { MarketplaceBrowser } from '../market/MarketplaceBrowser';
 import { QuoteManager } from '../market/QuoteManager';
@@ -6,7 +5,7 @@ import { MarketPricesView } from '../market/MarketPricesView';
 import { DemandForm } from '../market/DemandForm';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
-import { Building2, Search, Inbox, MapPin, ClipboardList, LogOut, TrendingUp, Sparkles, Target, Activity } from 'lucide-react';
+import { Building2, Search, Inbox, ClipboardList, LogOut, TrendingUp, Sparkles, Target, Activity } from 'lucide-react';
 
 export const BuyerDashboard = () => {
     const { profile } = useAuth();
