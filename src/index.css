@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --primary: #C5A059; /* Gold/Sand */
+    --primary-dark: #b08d4b;
+    --primary-glow: rgba(197, 160, 89, 0.4);
+    
+    --secondary: #1E3F20; /* Dark Forest Green */
+    --accent: #C5A059;
+    
+    --bg-deep: #FAF9F7; /* Bone/Beige */
+    --bg-card: #FFFFFF; /* White */
+    --bg-glass: rgba(255, 255, 255, 0.8);
+    
+    --border-glass: rgba(10, 10, 10, 0.1);
+    --border-highlight: rgba(197, 160, 89, 0.2);
+    
+    --text-main: #0A0A0A;
+    --text-muted: #57534E;
+  }
+
+  body {
+    @apply bg-[#FAF9F7] text-[#0A0A0A] font-sans antialiased selection:bg-[#C5A059] selection:text-white;
+    background-image: 
+      radial-gradient(circle at 0% 0%, rgba(197, 160, 89, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(30, 63, 32, 0.03) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/90 backdrop-blur-xl border border-[#0A0A0A]/10 rounded-none shadow-sm;
+  }
+
+  .emerald-glow {
+    box-shadow: 0 4px 20px var(--primary-glow);
+  }
+
+  .tech-grid {
+    background-size: 30px 30px;
+    background-image: 
+      linear-gradient(to right, rgba(10,10,10,0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(10,10,10,0.03) 1px, transparent 1px);
+  }
+
+  .btn-primary-emerald {
+    @apply bg-[#0A0A0A] hover:bg-[#2D2D2D] text-[#FAF9F7] font-bold py-3 px-6 rounded-none uppercase text-xs tracking-widest transition-all shadow-sm active:scale-95 flex items-center justify-center gap-2;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-[#FAF9F7];
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-[#0A0A0A]/20 hover:bg-[#0A0A0A]/40 transition-colors;
+}

@@ -1,0 +1,84 @@
+{
+  "name": "Agroconecta - Alerta Agronómica (WhatsApp)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agronomic-alert",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "90875e53-bb17-4bfc-a3d5-eeb0868f0a0d",
+      "name": "Webhook Antigravity",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        460
+      ],
+      "webhookId": "agronomic-alert"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.tu-proveedor-whatsapp.com/message/sendText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "TU_API_KEY_EXTERNA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.body.phone }}\",\n  \"options\": {\n    \"delay\": 1200,\n    \"presence\": \"composing\"\n  },\n  \"textMessage\": {\n    \"text\": \"*🌱 Agroconecta - Alerta {{$json.body.severity}}*\\n\\nCultivo Afectado: *{{$json.body.parcel_crop}}*\\n\\n{{$json.body.message}}\\n\\n_Este es un mensaje generado automáticamente tras el último escaneo satelital_\"\n  }\n}",
+        "options": {}
+      },
+      "id": "e44c20f1-e37d-41a4-94e8-8b9e60249c58",
+      "name": "Enviar Mensaje de WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Webhook: Orquestación Satelital\nRecibe los campos:\n- `phone`: Número del agricultor\n- `severity`: Alta, Media\n- `message`: Diagnóstico \n- `parcel_crop`: Nombre del cultivo",
+        "height": 260,
+        "width": 540,
+        "color": 6
+      },
+      "id": "1d8a1af1-c057-4638-b788-29cf9a34bcfa",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        340
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Antigravity": {
+      "main": [
+        [
+          {
+            "node": "Enviar Mensaje de WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fabaa854-32b0-4592-b4c4-7220ec26cda4"
+}
