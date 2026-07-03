@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import { MarketplaceBrowser } from '../market/MarketplaceBrowser';
 import { QuoteManager } from '../market/QuoteManager';
@@ -9,7 +10,7 @@ import { Building2, Search, Inbox, ClipboardList, LogOut, TrendingUp, Sparkles, 
 
 export const BuyerDashboard = () => {
     const { profile } = useAuth();
-    const [activeTab, setActiveTab] = React.useState<'browse' | 'quotes' | 'demands'>('browse');
+    const [activeTab, setActiveTab] = useState<'browse' | 'quotes' | 'demands'>('browse');
 
     return (
         <div className="min-h-screen bg-[#FAF9F7] tech-grid">
