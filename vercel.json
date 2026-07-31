@@ -1,1 +1,19 @@
-{"buildCommand":"vite build","outputDirectory":"dist","framework":"vite"}
+{
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/api/cdse-auth/(.*)",
+      "destination": "https://identity.dataspace.copernicus.eu/$1"
+    },
+    {
+      "source": "/api/cdse-sh/(.*)",
+      "destination": "https://sh.dataspace.copernicus.eu/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
