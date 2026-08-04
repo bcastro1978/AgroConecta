@@ -161,16 +161,12 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                             setLoading(true);
                                             try {
                                                 const { syncSingleParcel } = await import('../../../lib/copernicusSync');
-                                                const success = await syncSingleParcel(d.parcel.id);
-                                                if(success) {
-                                                    alert("Telemetría descargada exitosamente.");
-                                                    fetchData();
-                                                } else {
-                                                    alert("Fallo al contactar Sentinel Hub.");
+                                                const res = await syncSingleParcel(d.parcel.id);
+                                                if (res) {
+                                                    await fetchData();
                                                 }
                                             } catch(e) {
-                                                console.error(e);
-                                                alert("Error de sincronización.");
+                                                console.error("Error al sincronizar parcela:", e);
                                             } finally {
                                                 setLoading(false);
                                             }
