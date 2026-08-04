@@ -4,7 +4,7 @@ import { useAuth } from '../../auth/AuthProvider';
 import { 
     Activity, AlertTriangle, CheckCircle, Droplets, Map, Sprout, Wind, 
     ArrowRight, X, Eye, Sparkles, BrainCircuit, Waves, Target, Clock, Satellite,
-    MapPin, FileCheck
+    MapPin, FileCheck, Trash2
 } from 'lucide-react';
 import { TraceabilityReport } from './TraceabilityReport';
 
@@ -66,6 +66,58 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
             setGroupedData(parsedData);
         } catch (error) {
             console.error("Error fetching agronomic health", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteParcel = async (parcelId: string, cropName: string) => {
+        if (!user) return;
+
+        try {
+            // Verificar si la parcela o su cultivo asociado tiene transacciones con trato aceptado ('Accepted')
+            const { data: acceptedDeals } = await supabase
+                .from('negotiations')
+                .select('id, status, marketplace_listings(crop_type, producer_id)')
+                .eq('status', 'Accepted');
+
+            const { data: listings } = await supabase
+                .from('marketplace_listings')
+                .select('id, crop_type')
+                .eq('producer_id', user.id)
+                .eq('crop_type', cropName);
+
+            const listingIds = new Set(listings?.map(l => l.id) || []);
+            
+            const hasCompletedSale = acceptedDeals?.some((deal: any) => {
+                const listing = deal.marketplace_listings;
+                return (listing && listingIds.has(listing.id)) || (listing && listing.crop_type?.toLowerCase() === cropName?.toLowerCase() && listing.producer_id === user.id);
+            });
+
+            if (hasCompletedSale) {
+                alert(`⛔ OPERACIÓN NO PERMITIDA\n\nLa parcela "${cropName.toUpperCase()}" no puede ser eliminada porque cuenta con transacciones de venta completadas ("Accepted") registradas para trazabilidad y cumplimiento de la norma europea EUDR.`);
+                return;
+            }
+
+            if (!window.confirm(`⚠️ ELIMINAR PARCELA\n\n¿Estás seguro de eliminar la parcela de "${cropName}"?\nSe borrarán todas sus lecturas radiométricas e historial satelital.`)) {
+                return;
+            }
+
+            setLoading(true);
+            
+            // Eliminar registros de telemetría y alertas vinculadas
+            await supabase.from('sat_telemetry').delete().eq('parcel_id', parcelId);
+            await supabase.from('alerts_events').delete().eq('parcel_id', parcelId);
+            
+            // Eliminar la parcela
+            const { error: delErr } = await supabase.from('parcels').delete().eq('id', parcelId);
+            if (delErr) throw delErr;
+
+            alert(`✅ Parcela "${cropName}" eliminada correctamente.`);
+            fetchData();
+        } catch (err: any) {
+            console.error("Error al eliminar parcela:", err);
+            alert("Error al eliminar parcela: " + (err.message || err));
         } finally {
             setLoading(false);
         }
@@ -300,21 +352,37 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                         </div>
                                     </button>
 
-                                     <div className="mt-2">
+                                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                          <button 
                                              onClick={() => setReportParcel({ ...d.parcel, sat_telemetry: d.all_telemetry })}
-                                             className="w-full bg-[#0A0A0A] hover:bg-[#1A1A1A] border border-[#0A0A0A]/20 rounded-2xl p-3.5 flex items-center justify-between group/report transition-all active:scale-[0.98] cursor-pointer shadow-lg"
+                                             className="w-full bg-[#0A0A0A] hover:bg-[#1A1A1A] border border-[#0A0A0A]/20 rounded-2xl p-3 flex items-center justify-between group/report transition-all active:scale-[0.98] cursor-pointer shadow-lg"
                                          >
-                                             <div className="flex items-center gap-3">
-                                                 <div className="p-2.5 bg-white/10 rounded-xl text-white group-hover/report:scale-110 transition-transform">
-                                                     <FileCheck size={16} />
+                                             <div className="flex items-center gap-2">
+                                                 <div className="p-2 bg-white/10 rounded-xl text-white group-hover/report:scale-110 transition-transform">
+                                                     <FileCheck size={14} />
                                                  </div>
                                                  <div className="flex flex-col items-start">
-                                                     <span className="text-[8px] font-black text-white/50 uppercase tracking-widest">Expediente Oficial</span>
-                                                     <span className="text-xs font-black text-white uppercase tracking-wider">Reporte Trazabilidad EUDR</span>
+                                                     <span className="text-[7px] font-black text-white/50 uppercase tracking-widest">Expediente</span>
+                                                     <span className="text-[10px] font-black text-white uppercase tracking-wider">Trazabilidad EUDR</span>
                                                  </div>
                                              </div>
-                                             <ArrowRight size={16} className="text-white group-hover/report:translate-x-1 transition-transform" />
+                                             <ArrowRight size={14} className="text-white group-hover/report:translate-x-0.5 transition-transform" />
+                                         </button>
+
+                                         <button 
+                                             onClick={() => handleDeleteParcel(d.parcel.id, d.parcel.active_crop)}
+                                             className="w-full bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-500/20 rounded-2xl p-3 flex items-center justify-between group/delete transition-all active:scale-[0.98] cursor-pointer shadow-sm"
+                                             title="Eliminar Parcela"
+                                         >
+                                             <div className="flex items-center gap-2">
+                                                 <div className="p-2 bg-rose-500/20 rounded-xl group-hover/delete:bg-white/20 transition-colors">
+                                                     <Trash2 size={14} />
+                                                 </div>
+                                                 <div className="flex flex-col items-start">
+                                                     <span className="text-[7px] font-black uppercase tracking-widest opacity-75">Eliminación</span>
+                                                     <span className="text-[10px] font-black uppercase tracking-wider">Borrar Parcela</span>
+                                                 </div>
+                                             </div>
                                          </button>
                                      </div>
                                 </div>
