@@ -172,8 +172,26 @@ export const B2BListingForm = ({ onListingCreated }: { onListingCreated: () => v
     };
 
     const handleDeleteListing = async (listingId: string) => {
-        if (!confirm('¿Estás seguro de eliminar esta oferta de tu catálogo activo?')) return;
         try {
+            // Verificar si el producto/oferta tiene negociaciones en curso o aceptadas
+            const { data: negs, error: negErr } = await supabase
+                .from('negotiations')
+                .select('id, status')
+                .eq('listing_id', listingId);
+
+            if (negErr) throw negErr;
+
+            const activeOrAcceptedNeg = negs?.find(n => ['Pending', 'CounterOffer', 'Accepted'].includes(n.status));
+
+            if (activeOrAcceptedNeg) {
+                const statusLabel = activeOrAcceptedNeg.status === 'Accepted' ? 'cerrada/aceptada' : 'en curso/negociación';
+                alert(`⛔ OPERACIÓN NO PERMITIDA\n\nEste producto no puede eliminarse porque tiene una cotización o transacción ${statusLabel}. Las negociaciones activas y cerradas deben mantenerse para trazabilidad.`);
+                setError(`No se puede eliminar un producto con negociaciones ${statusLabel}.`);
+                return;
+            }
+
+            if (!confirm('¿Estás seguro de eliminar esta oferta de tu catálogo activo?')) return;
+
             const { error: delErr } = await supabase
                 .from('marketplace_listings')
                 .delete()
@@ -580,6 +598,7 @@ export const B2BListingForm = ({ onListingCreated }: { onListingCreated: () => v
                     <div className="space-y-4">
                         {publishedListings.map((item) => {
                             const hasAcceptedOffer = item.negotiations?.some(n => n.status === 'Accepted');
+                            const hasActiveNegotiation = item.negotiations?.some(n => ['Pending', 'CounterOffer'].includes(n.status));
                             const isBeingEdited = editingListingId === item.id;
 
                             return (
@@ -605,6 +624,11 @@ export const B2BListingForm = ({ onListingCreated }: { onListingCreated: () => v
                                                 }`}>
                                                     {item.status}
                                                 </span>
+                                                {hasActiveNegotiation && (
+                                                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full uppercase bg-blue-100 text-blue-800 flex items-center gap-1">
+                                                        En Negociación
+                                                    </span>
+                                                )}
                                             </div>
 
                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs font-bold text-slate-600">

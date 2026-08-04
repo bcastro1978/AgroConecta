@@ -105,27 +105,13 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
 
             setLoading(true);
 
-            // 1. Eliminar registros de telemetría por ID primario pertenecientes a esta parcela
-            const { data: telRows } = await supabase
-                .from('sat_telemetry')
-                .select('id')
-                .eq('parcel_id', parcelId);
+            // 1. Eliminar registros de telemetría pertenecientes a esta parcela
+            const { error: telErr } = await supabase.from('sat_telemetry').delete().eq('parcel_id', parcelId);
+            if (telErr) throw telErr;
 
-            if (telRows && telRows.length > 0) {
-                const telIds = telRows.map(t => t.id);
-                await supabase.from('sat_telemetry').delete().in('id', telIds);
-            }
-
-            // 2. Eliminar eventos de alertas por ID primario
-            const { data: alertRows } = await supabase
-                .from('alerts_events')
-                .select('id')
-                .eq('parcel_id', parcelId);
-
-            if (alertRows && alertRows.length > 0) {
-                const alertIds = alertRows.map(a => a.id);
-                await supabase.from('alerts_events').delete().in('id', alertIds);
-            }
+            // 2. Eliminar eventos de alertas
+            const { error: alertErr } = await supabase.from('alerts_events').delete().eq('parcel_id', parcelId);
+            if (alertErr) throw alertErr;
 
             // 3. Eliminar la parcela
             const { error: delErr } = await supabase.from('parcels').delete().eq('id', parcelId);
@@ -302,27 +288,32 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                         </div>
                                     </div>
 
-                                    {a && (
-                                        <div className="bg-[#1E3F20]/5 border border-emerald-500/10 rounded-2xl p-4 flex items-start gap-3 relative overflow-hidden group/diag">
-                                            <div className="absolute top-0 right-0 p-2 opacity-5">
-                                                <BrainCircuit size={40} className="text-[#1E3F20]" />
+                                    {/* Diagnóstico Agronómico Radiométrico */}
+                                    <div className="bg-[#1E3F20]/5 border border-emerald-500/10 rounded-2xl p-4 flex items-start gap-3 relative overflow-hidden group/diag">
+                                        <div className="absolute top-0 right-0 p-2 opacity-5">
+                                            <BrainCircuit size={40} className="text-[#1E3F20]" />
+                                        </div>
+                                        <div className="bg-[#1E3F20]/10 p-2.5 rounded-xl text-[#1E3F20]">
+                                            <Activity size={18} />
+                                        </div>
+                                        <div className="relative z-10 flex-1">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[9px] font-black text-[#1E3F20] uppercase tracking-widest">Diagnóstico Fitosanitario IA</span>
+                                                <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase ${a?.severity === 'Alta' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'}`}>
+                                                    {a ? `Alerta ${a.severity}` : status.label}
+                                                </span>
                                             </div>
-                                            <div className="bg-[#1E3F20]/10 p-2 rounded-xl text-[#1E3F20]">
-                                                <Activity size={16} />
-                                            </div>
-                                            <div className="relative z-10 flex-1">
-                                                <p className="text-[11px] leading-relaxed text-[#57534E] font-medium whitespace-normal mb-2">
-                                                    {a.anomaly_type}
+                                            <p className="text-[11px] leading-relaxed text-[#57534E] font-medium whitespace-normal mb-2">
+                                                {a ? a.anomaly_type : (t.ndvi_avg > 0.65 ? 'Firma multiespectral muestra vigor vegetativo elevado y densidad foliar homogénea.' : t.ndvi_avg >= 0.40 ? 'Detección de leve reducción en reflectancia infrarroja en banda B08.' : 'Anomalía detectada: Caída crítica de índice NDVI por posible déficit hídrico o estrés nuticional.')}
+                                            </p>
+                                            <div className="bg-[#1E3F20]/5 border border-[#1E3F20]/20 rounded-xl p-3">
+                                                <p className="text-[8px] font-black text-[#1E3F20] uppercase tracking-widest mb-1">Hoja de Ruta Sugerida</p>
+                                                <p className="text-[10px] text-[#1E3F20]/90 leading-relaxed italic">
+                                                    {a ? a.action_suggested : (t.ndvi_avg > 0.65 ? 'Mantener programa de fertirriego estándar y continuar escaneo satelital programado.' : t.ndvi_avg >= 0.40 ? 'Verificar nivel de humedad de suelo (NDMI) y monitorear evolución en próximo pase de Sentinel-2.' : 'Realizar inspección agronómica en campo y verificar conductividad eléctrica de suelo.')}
                                                 </p>
-                                                <div className="bg-[#1E3F20]/5 border border-[#1E3F20]/20 rounded-xl p-3">
-                                                    <p className="text-[8px] font-black text-[#1E3F20] uppercase tracking-widest mb-1">Hoja de Ruta Sugerida</p>
-                                                    <p className="text-[10px] text-[#1E3F20]/90 leading-relaxed italic">
-                                                        {a.action_suggested}
-                                                    </p>
-                                                </div>
                                             </div>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
 
                                 {/* Action Buttons */}
@@ -330,12 +321,23 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                     <button 
                                         className="w-full bg-[#FAF9F7]/80 hover:bg-[#1E3F20]/5 border border-[#0A0A0A]/10 hover:border-[#1E3F20]/20 rounded-2xl p-3 flex items-center justify-between group/btn transition-all active:scale-[0.98] cursor-pointer"
                                         onClick={async () => {
-                                            if (d.images) {
-                                                setSelectedParcel({ ...d, images: d.images });
-                                            } else {
-                                                const images = await fetchFullImage(t.id);
-                                                setSelectedParcel({ ...d, images });
+                                            let images = d.images;
+                                            if (!images || (!images.image_base64 && !images.image_rgb_base64)) {
+                                                images = await fetchFullImage(t.id);
                                             }
+                                            
+                                            // Fallback inmediato si no hay imágenes raster guardadas en BD
+                                            if (!images || (!images.image_base64 && !images.image_rgb_base64)) {
+                                                const { syncSingleParcel } = await import('../../../lib/copernicusSync');
+                                                const synced = await syncSingleParcel(d.parcel.id);
+                                                if (synced) {
+                                                    images = {
+                                                        image_base64: synced.image_base64,
+                                                        image_rgb_base64: synced.image_rgb_base64
+                                                    };
+                                                }
+                                            }
+                                            setSelectedParcel({ ...d, images });
                                         }}
                                     >
                                         <div className="flex items-center gap-3">
@@ -489,9 +491,9 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* True Color */}
                                 <div className="relative group overflow-hidden rounded-2xl border border-[#0A0A0A]/10 flex items-center justify-center bg-slate-900 min-h-[260px]">
-                                    {selectedParcel.images?.image_rgb_base64 && selectedParcel.images.image_rgb_base64.trim() !== '' ? (
+                                    {selectedParcel.images?.image_rgb_base64 || selectedParcel.latest_telemetry?.image_rgb_base64 ? (
                                         <img 
-                                            src={selectedParcel.images.image_rgb_base64} 
+                                            src={selectedParcel.images?.image_rgb_base64 || selectedParcel.latest_telemetry?.image_rgb_base64} 
                                             className="w-full max-h-[340px] object-contain" 
                                             alt="True Color"
                                         />
@@ -499,7 +501,7 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                         <div className="p-8 text-center space-y-3">
                                             <Satellite size={36} className="text-[#1E3F20] animate-bounce mx-auto" />
                                             <p className="text-white text-xs font-black uppercase tracking-wider">Capa Óptica (Color Real)</p>
-                                            <p className="text-slate-400 text-[10px] font-bold">Procesando firma multiespectral Sentinel-2 CDSE...</p>
+                                            <p className="text-slate-400 text-[10px] font-bold">Sin imagen raster previa en base de datos.</p>
                                         </div>
                                     )}
                                     <div className="absolute top-3 left-3 bg-[#FAF9F7]/90 backdrop-blur-md border border-[#0A0A0A]/10 text-[#0A0A0A] px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">
@@ -509,9 +511,9 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
 
                                 {/* False Color / NDVI */}
                                 <div className="relative group overflow-hidden rounded-2xl border border-[#0A0A0A]/10 flex items-center justify-center bg-slate-900 min-h-[260px]">
-                                    {selectedParcel.images?.image_base64 && selectedParcel.images.image_base64.trim() !== '' ? (
+                                    {selectedParcel.images?.image_base64 || selectedParcel.latest_telemetry?.image_base64 ? (
                                         <img 
-                                            src={selectedParcel.images.image_base64} 
+                                            src={selectedParcel.images?.image_base64 || selectedParcel.latest_telemetry?.image_base64} 
                                             className="w-full max-h-[340px] object-contain" 
                                             alt="False Color"
                                         />
@@ -519,11 +521,35 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                         <div className="p-8 text-center space-y-3">
                                             <Activity size={36} className="text-[#1E3F20] animate-pulse mx-auto" />
                                             <p className="text-white text-xs font-black uppercase tracking-wider">Matriz de Vigor Vegetativo (NDVI)</p>
-                                            <p className="text-slate-400 text-[10px] font-bold">Resolución espectral de 10m/px en proceso...</p>
+                                            <p className="text-slate-400 text-[10px] font-bold">Sin mapa de vigor previo en base de datos.</p>
                                         </div>
                                     )}
                                     <div className="absolute top-3 left-3 bg-[#1E3F20] text-white px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">
                                         {selectedParcel.latest_telemetry.mission?.includes('SAR') ? '🔍 Analítica Estructural' : '🔥 Vigor Vegetativo (NDVI)'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Seccion de Diagnostico Fitosanitario IA */}
+                            <div className="bg-[#1E3F20]/5 border border-emerald-500/15 rounded-2xl p-5 flex items-start gap-4 relative overflow-hidden">
+                                <div className="bg-[#1E3F20]/10 p-3 rounded-2xl text-[#1E3F20] shrink-0">
+                                    <BrainCircuit size={22} />
+                                </div>
+                                <div className="relative z-10 flex-1 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-[#1E3F20] uppercase tracking-widest">Diagnóstico Radiométrico e Interpretación IA</span>
+                                        <span className="text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase bg-emerald-100 text-emerald-800">
+                                            {selectedParcel.latest_alert ? `Alerta: ${selectedParcel.latest_alert.severity}` : (selectedParcel.latest_telemetry.ndvi_avg > 0.65 ? 'Vigor Óptimo' : selectedParcel.latest_telemetry.ndvi_avg >= 0.40 ? 'Estrés Moderado' : 'Estrés Crítico')}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-[#57534E] font-medium leading-relaxed">
+                                        {selectedParcel.latest_alert ? selectedParcel.latest_alert.anomaly_type : (selectedParcel.latest_telemetry.ndvi_avg > 0.65 ? 'Lectura multiespectral dentro de parámetros óptimos de fotosíntesis. Reflectancia infrarroja en banda B08 uniforme.' : selectedParcel.latest_telemetry.ndvi_avg >= 0.40 ? 'Detección de leve reducción en vigor foliar. Se observa menor absorbancia de luz en banda roja B04.' : 'Firma espectral crítica: Caída significativa en el índice vegetativo por déficit hídrico o daño foliar.')}
+                                    </p>
+                                    <div className="bg-[#1E3F20]/5 border border-[#1E3F20]/20 rounded-xl p-3">
+                                        <p className="text-[9px] font-black text-[#1E3F20] uppercase tracking-widest mb-1">Hoja de Ruta Sugerida</p>
+                                        <p className="text-xs text-[#1E3F20]/90 italic font-medium leading-relaxed">
+                                            {selectedParcel.latest_alert ? selectedParcel.latest_alert.action_suggested : (selectedParcel.latest_telemetry.ndvi_avg > 0.65 ? 'Mantener calendario de fertilización de precisión y monitorear humedad de dosel.' : selectedParcel.latest_telemetry.ndvi_avg >= 0.40 ? 'Verificar nivel de lámina de agua y revisar conductividad eléctrica en raíz.' : 'Realizar inspección agronómica en parcela y consultar al Especialista en Riego o Fitopatólogo en la plataforma.')}
+                                        </p>
                                     </div>
                                 </div>
                             </div>

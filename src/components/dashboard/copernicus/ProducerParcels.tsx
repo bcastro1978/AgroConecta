@@ -436,27 +436,13 @@ export const ProducerParcels = ({
 
             setLoading(true);
 
-            // 1. Eliminar registros de telemetría por ID primario pertenecientes a esta parcela
-            const { data: telRows } = await supabase
-                .from('sat_telemetry')
-                .select('id')
-                .eq('parcel_id', parcelId);
+            // 1. Eliminar registros de telemetría pertenecientes a esta parcela
+            const { error: telErr } = await supabase.from('sat_telemetry').delete().eq('parcel_id', parcelId);
+            if (telErr) throw telErr;
 
-            if (telRows && telRows.length > 0) {
-                const telIds = telRows.map(t => t.id);
-                await supabase.from('sat_telemetry').delete().in('id', telIds);
-            }
-
-            // 2. Eliminar eventos de alertas por ID primario
-            const { data: alertRows } = await supabase
-                .from('alerts_events')
-                .select('id')
-                .eq('parcel_id', parcelId);
-
-            if (alertRows && alertRows.length > 0) {
-                const alertIds = alertRows.map(a => a.id);
-                await supabase.from('alerts_events').delete().in('id', alertIds);
-            }
+            // 2. Eliminar eventos de alertas
+            const { error: alertErr } = await supabase.from('alerts_events').delete().eq('parcel_id', parcelId);
+            if (alertErr) throw alertErr;
 
             // 3. Eliminar la parcela
             const { error: delErr } = await supabase.from('parcels').delete().eq('id', parcelId);
