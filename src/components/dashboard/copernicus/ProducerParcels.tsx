@@ -402,6 +402,60 @@ export const ProducerParcels = ({
         }
     };
 
+    const handleDeleteParcel = async (parcelId: string, cropName: string) => {
+        if (!user) return;
+
+        try {
+            // Verificar si la parcela o su cultivo asociado tiene transacciones con trato aceptado ('Accepted')
+            const { data: acceptedDeals } = await supabase
+                .from('negotiations')
+                .select('id, status, marketplace_listings(crop_type, producer_id)')
+                .eq('status', 'Accepted');
+
+            const { data: listings } = await supabase
+                .from('marketplace_listings')
+                .select('id, crop_type')
+                .eq('producer_id', user.id)
+                .eq('crop_type', cropName);
+
+            const listingIds = new Set(listings?.map(l => l.id) || []);
+            
+            const hasCompletedSale = acceptedDeals?.some((deal: any) => {
+                const listing = deal.marketplace_listings;
+                return (listing && listingIds.has(listing.id)) || (listing && listing.crop_type?.toLowerCase() === cropName?.toLowerCase() && listing.producer_id === user.id);
+            });
+
+            if (hasCompletedSale) {
+                alert(`⛔ OPERACIÓN NO PERMITIDA\n\nLa parcela "${cropName.toUpperCase()}" no puede ser eliminada porque cuenta con transacciones de venta completadas ("Accepted") registradas para trazabilidad y cumplimiento de la norma europea EUDR.`);
+                return;
+            }
+
+            if (!window.confirm(`⚠️ ELIMINAR PARCELA\n\n¿Estás seguro de eliminar la parcela de "${cropName}"?\nSe borrarán todas sus lecturas radiométricas e historial satelital.`)) {
+                return;
+            }
+
+            setLoading(true);
+            
+            // Eliminar registros de telemetría y alertas vinculadas
+            await supabase.from('sat_telemetry').delete().eq('parcel_id', parcelId);
+            await supabase.from('alerts_events').delete().eq('parcel_id', parcelId);
+            
+            // Eliminar la parcela
+            const { error: delErr } = await supabase.from('parcels').delete().eq('id', parcelId);
+            if (delErr) throw delErr;
+
+            alert(`✅ Parcela "${cropName}" eliminada correctamente.`);
+            if (viewingParcel?.id === parcelId) setViewingParcel(null);
+            if (editingParcelId === parcelId) cancelEdit();
+            fetchParcels();
+        } catch (err: any) {
+            console.error("Error al eliminar parcela:", err);
+            alert("Error al eliminar parcela: " + (err.message || err));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const viewParcelOnMap = async (p: any) => {
         setViewingParcel(p);
         
@@ -776,15 +830,24 @@ export const ProducerParcels = ({
                                 
                                 <div className="space-y-2 mt-auto">
                                     <div className="grid grid-cols-2 gap-2">
-                                        <button onClick={() => viewParcelOnMap(p)} className="py-2.5 bg-white/5 hover:bg-white/10 text-[#0A0A0A] rounded-xl text-[10px] font-black uppercase tracking-widest border border-[#0A0A0A]/10 transition-all flex items-center justify-center gap-1.5"><Eye size={14}/> Visor</button>
-                                        <button onClick={() => editParcel(p)} className="py-2.5 bg-[#C5A059]/10 hover:bg-[#C5A059]/10 text-[#C5A059] rounded-xl text-[10px] font-black uppercase tracking-widest border border-cyan-500/20 transition-all flex items-center justify-center gap-1.5"><Edit2 size={14}/> Editar</button>
+                                        <button onClick={() => viewParcelOnMap(p)} className="py-2.5 bg-slate-100 hover:bg-slate-200 text-[#0A0A0A] rounded-xl text-[10px] font-black uppercase tracking-widest border border-[#0A0A0A]/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer"><Eye size={14}/> Visor</button>
+                                        <button onClick={() => editParcel(p)} className="py-2.5 bg-[#C5A059]/10 hover:bg-[#C5A059]/20 text-[#C5A059] rounded-xl text-[10px] font-black uppercase tracking-widest border border-[#C5A059]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"><Edit2 size={14}/> Editar</button>
                                     </div>
-                                    <button 
-                                        onClick={() => setReportParcel(p)}
-                                        className="w-full py-3 bg-[#1E3F20]/5 hover:bg-[#1E3F20] text-[#1E3F20] hover:text-slate-950 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] border border-[#1E3F20]/20 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <FileCheck size={14}/> Generar Trazabilidad
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button 
+                                            onClick={() => setReportParcel(p)}
+                                            className="py-2.5 bg-[#1E3F20]/10 hover:bg-[#1E3F20] text-[#1E3F20] hover:text-white rounded-xl text-[10px] font-black uppercase tracking-[0.1em] border border-[#1E3F20]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                        >
+                                            <FileCheck size={14}/> Trazabilidad
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteParcel(p.id, p.active_crop)}
+                                            className="py-2.5 bg-rose-500/10 hover:bg-rose-600 text-rose-600 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest border border-rose-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                            title="Eliminar Parcela"
+                                        >
+                                            <Trash2 size={14}/> Eliminar
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
