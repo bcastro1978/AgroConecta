@@ -78,67 +78,42 @@ export const syncSingleParcel = async (parcelId: string) => {
             console.warn("OAuth CDSE no disponible, utilizando datos de respaldo:", e.message);
         }
 
-        // Función determinística para calcular la firma radiométrica única según las coordenadas geográficas del polígono de la parcela
-        const calculateGeographicRadiometricSignature = (geom: any) => {
-            if (!geom || !geom.coordinates || !geom.coordinates[0]) {
-                return { ndvi: 0.65, ndmi: 0.38, bsi: -0.04 };
-            }
-            const coords = geom.type === "Polygon" ? geom.coordinates[0] : geom.coordinates[0][0];
-            let sumLat = 0, sumLng = 0;
-            coords.forEach((c: any) => {
-                sumLng += Math.abs(c[0] || 0);
-                sumLat += Math.abs(c[1] || 0);
-            });
-            const avgLat = sumLat / coords.length;
-            const avgLng = sumLng / coords.length;
-
-            // Semilla determinística basada en coordenadas de precisión geográfica de la parcela
-            const seed = (avgLat * 10000 + avgLng * 10000) % 100;
-            const ndvi = Number((0.52 + (seed * 0.0037) % 0.38).toFixed(3)); // Rango distintivo 0.520 - 0.900
-            const ndmi = Number((0.28 + (seed * 0.0029) % 0.30).toFixed(3)); // Rango distintivo 0.280 - 0.580
-            const bsi  = Number((-0.12 + (seed * 0.0017) % 0.16).toFixed(3)); // Rango distintivo -0.120 - 0.040
-
-            return { ndvi, ndmi, bsi };
-        };
-
-        const geoSignature = calculateGeographicRadiometricSignature(parcel.geometry);
-        let ndviMean = geoSignature.ndvi;
-        let ndmiMean = geoSignature.ndmi;
-        let bsiMean = geoSignature.bsi;
+        let ndviMean: number | null = null;
+        let ndmiMean: number | null = null;
+        let bsiMean: number | null = null;
         let rasterBase64: string | null = null;
         let rgbBase64: string | null = null;
 
         if (token) {
-            try {
-                const geometry = parcel.geometry;
-                const toDate = new Date().toISOString();
-                const fromDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+            const geometry = parcel.geometry;
+            const toDate = new Date().toISOString();
+            const fromDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
-                const inputData = { 
-                    type: "sentinel-2-l2a", 
-                    dataFilter: { timeRange: { from: fromDate, to: toDate }, maxCloudCoverage: 80 },
-                    processing: { upsampling: "BICUBIC" } 
-                };
+            const inputData = { 
+                type: "sentinel-2-l2a", 
+                dataFilter: { timeRange: { from: fromDate, to: toDate }, maxCloudCoverage: 80 },
+                processing: { upsampling: "BICUBIC" } 
+            };
 
-                const resStats = await fetch('/api/cdse-sh/api/v1/statistics', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({
-                        input: { bounds: { geometry: geometry }, data: [inputData] },
-                        aggregation: { timeRange: { from: fromDate, to: toDate }, aggregationInterval: { of: "P30D" }, evalscript: statsEvalScript, resx: 10, resy: 10 }
-                    })
-                });
+            const resStats = await fetch('/api/cdse-sh/api/v1/statistics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    input: { bounds: { geometry: geometry }, data: [inputData] },
+                    aggregation: { timeRange: { from: fromDate, to: toDate }, aggregationInterval: { of: "P30D" }, evalscript: statsEvalScript, resx: 10, resy: 10 }
+                })
+            });
 
-                if (resStats.ok) {
-                    const statData = await resStats.json();
-                    if (statData.data && statData.data.length > 0 && statData.data[0].outputs) {
-                        ndviMean = statData.data[0].outputs.ndvi.bands.B0.stats.mean || geoSignature.ndvi;
-                        ndmiMean = statData.data[0].outputs.ndmi.bands.B0.stats.mean || geoSignature.ndmi;
-                        bsiMean  = statData.data[0].outputs.bsi.bands.B0.stats.mean || geoSignature.bsi;
-                    }
+            if (resStats.ok) {
+                const statData = await resStats.json();
+                if (statData.data && statData.data.length > 0 && statData.data[0].outputs) {
+                    ndviMean = statData.data[0].outputs.ndvi.bands.B0.stats.mean ?? null;
+                    ndmiMean = statData.data[0].outputs.ndmi.bands.B0.stats.mean ?? null;
+                    bsiMean  = statData.data[0].outputs.bsi.bands.B0.stats.mean ?? null;
                 }
-            } catch (err: any) {
-                console.warn("Consulta CDSE retornó advertencia, procediendo con telemetría de respaldo:", err.message);
+            } else {
+                const errText = await resStats.text();
+                console.error("[Copernicus CDSE API Error]", resStats.status, errText);
             }
         }
 
