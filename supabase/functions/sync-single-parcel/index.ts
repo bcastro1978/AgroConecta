@@ -25,35 +25,13 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get('VITE_SUPABASE_URL') || Deno.env.get('SUPABASE_URL')
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('VITE_SUPABASE_ANON_KEY')
+    const supabaseKey = Deno.env.get('VITE_SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_KEY')
 
     if (!supabaseUrl || !supabaseKey) {
       throw new Error("Faltan variables de entorno para Supabase.")
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey)
-
-    // --- ACCIÓN DE ELIMINACIÓN DE PARCELA ---
-    if (action === 'delete') {
-      console.log(`[Delete Parcel] Eliminando parcela y registros asociados para parcel_id: ${parcel_id}`)
-
-      // 1. Eliminar telemetría
-      const { error: telErr } = await supabase.from('sat_telemetry').delete().eq('parcel_id', parcel_id)
-      if (telErr) console.error("Error borrando telemetría:", telErr)
-
-      // 2. Eliminar eventos de alertas
-      const { error: alErr } = await supabase.from('alerts_events').delete().eq('parcel_id', parcel_id)
-      if (alErr) console.error("Error borrando alertas:", alErr)
-
-      // 3. Eliminar la parcela
-      const { error: delErr } = await supabase.from('parcels').delete().eq('id', parcel_id)
-      if (delErr) throw new Error("Error borrando parcela: " + delErr.message)
-
-      return new Response(
-        JSON.stringify({ success: true, message: 'Parcela eliminada exitosamente' }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
 
     const SH_CLIENT_ID = Deno.env.get('SENTINEL_CLIENT_ID')
     const SH_CLIENT_SECRET = Deno.env.get('SENTINEL_CLIENT_SECRET')
