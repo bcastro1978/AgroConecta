@@ -6,6 +6,7 @@ import type { LatLngTuple } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Leaf, MapPin, Undo2, Trash2, CheckCircle2, Navigation, Edit2, Eye, X, FileCheck, Info, Satellite, Layers, AlertTriangle } from 'lucide-react';
 import { ECUADOR_LOCATIONS } from '../../../lib/locationData';
+import { syncSingleParcel } from '../../../lib/copernicusSync';
 import { TraceabilityReport } from './TraceabilityReport';
 
 // Componente para manejar los clics y el trazado en el mapa geoespacial
@@ -380,7 +381,6 @@ export const ProducerParcels = ({
 
             if (savedParcelId) {
                 try {
-                    const { syncSingleParcel } = await import('../../../lib/copernicusSync');
                     const success = await syncSingleParcel(savedParcelId);
                     if (success) {
                         alert("Parcela guardada y sincronizada exitosamente.");

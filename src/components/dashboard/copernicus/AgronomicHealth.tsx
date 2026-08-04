@@ -7,6 +7,7 @@ import {
     MapPin, FileCheck, Trash2
 } from 'lucide-react';
 import { TraceabilityReport } from './TraceabilityReport';
+import { syncSingleParcel } from '../../../lib/copernicusSync';
 
 export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p: any) => void }) => {
     const { user } = useAuth();
@@ -216,7 +217,6 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                         onClick={async () => {
                                             setLoading(true);
                                             try {
-                                                const { syncSingleParcel } = await import('../../../lib/copernicusSync');
                                                 const res = await syncSingleParcel(d.parcel.id);
                                                 if (res) {
                                                     await fetchData();
@@ -328,7 +328,6 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                             
                                             // Fallback inmediato si no hay imágenes raster guardadas en BD
                                             if (!images || (!images.image_base64 && !images.image_rgb_base64)) {
-                                                const { syncSingleParcel } = await import('../../../lib/copernicusSync');
                                                 const synced = await syncSingleParcel(d.parcel.id);
                                                 if (synced) {
                                                     images = {
