@@ -135,7 +135,7 @@ export const syncSingleParcel = async (parcelId: string) => {
             if (last.image_rgb_base64) rgbBase64 = last.image_rgb_base64;
         }
 
-        // Registrar o actualizar lectura en Supabase
+        // Registrar o actualizar lectura en Supabase siempre
         const telemetryResult = { 
             parcel_id: parcelId,
             timestamp: new Date().toISOString(),
@@ -149,7 +149,21 @@ export const syncSingleParcel = async (parcelId: string) => {
         };
 
         const { error: insErr } = await supabase.from('sat_telemetry').insert([telemetryResult]);
-        if (insErr) console.error("Error al registrar telemetría:", insErr);
+        if (insErr) {
+            console.error("Error al registrar telemetría:", insErr);
+        } else {
+            // Generar alerta de estado agronómico inicial si no existe
+            const { data: alertCheck } = await supabase.from('alerts_events').select('id').eq('parcel_id', parcelId).limit(1);
+            if (!alertCheck || alertCheck.length === 0) {
+                await supabase.from('alerts_events').insert([{
+                    parcel_id: parcelId,
+                    anomaly_type: ndviMean > 0.65 ? 'Firma multiespectral con vigor vegetativo óptimo.' : 'Evaluación inicial del cultivo en proceso.',
+                    action_suggested: ndviMean > 0.65 ? 'Mantener programa de fertirriego estándar.' : 'Continuar seguimiento satelital de la parcela.',
+                    severity: ndviMean > 0.65 ? 'Baja' : 'Media',
+                    notification_date: new Date().toISOString()
+                }]);
+            }
+        }
 
         console.log(`[Copernicus Sync] Sincronización exitosa para parcela: ${parcelId}`);
         return telemetryResult;
