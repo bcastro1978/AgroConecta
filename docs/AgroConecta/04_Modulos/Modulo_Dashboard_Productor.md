@@ -38,7 +38,13 @@ El corazón operativo de la plataforma para los agricultores. Aquí es donde los
 6. **Catálogo Automatizado por Perfil:** El formulario de ofertas B2B (`B2BListingForm.tsx`) detecta de forma automática el rol del usuario activo (`profile.role`):
    - **Productor:** Carga exclusivamente los productos de cosecha agrícola (Cacao, Arroz, Papa, Maíz, Plátano, Tomate, Café, etc.).
    - **Proveedor:** Carga exclusivamente los insumos, semillas, agroquímicos, maquinaria y servicios técnicos.
-7. **Selección de Cultivo en Geometría Satelital:** En la pestaña **MAPA CDSE** (`ProducerParcels.tsx`), el campo *"Identificador del Cultivo"* fue reemplazado por la selección directa del **Catálogo de Productos Agrícolas del Productor** (`products_catalog`), asegurando consistencia entre la finca georreferenciada y el catálogo de la plataforma.
+7. **Gestión de Parcelas y Geometría Satelital (`ProducerParcels.tsx`):**
+   - **Trazado de Linderos:** Dibujo de polígonos GeoJSON manualmente o mediante caminata de linderos GPS.
+   - **Límite Agronómico de Superficie:** Validación estricta de un máximo de 50 Hectáreas por parcela.
+   - **Opción de Borrado de Parcelas con Regla de Validación EUDR:**
+     - Se añadió la acción de eliminación con botón interactivo de papelera (`Trash2`).
+     - **Regla de Negocio:** Se realiza una verificación en la base de datos `negotiations` y `marketplace_listings`. Si la parcela cuenta con ventas cerradas o negociaciones aceptadas (`status = 'Accepted'`), la eliminación queda bloqueada con la notificación: *"La parcela no puede ser eliminada porque cuenta con transacciones de venta completadas registradas para trazabilidad EUDR"*.
+     - Si la parcela no tiene ventas concretadas, elimina en cascada las lecturas de telemetría y eventos asociados en Supabase.
 8. **Validación Satelital Obligatoria para Publicar Ofertas:** Para publicar una oferta B2B en `B2BListingForm.tsx`, el sistema valida que el producto seleccionado coincida con un cultivo registrado en las parcelas satelitales del productor (`parcels`). Si el cultivo no cuenta con mapa geoespacial en su perfil, la publicación se inhabilita con una alerta que guía al agricultor a mapearlo en la pestaña **MAPA CDSE**.
 9. **Dashboard Analítico Agroproductivo Nacional (`NationalMarketAnalytics.tsx`):**
    - **Registro Desagregado por Provincia:** Almacenamiento en `market_prices` de las cotizaciones a nivel de productor (Pie de Finca) para 31+ registros en provincias estratégicas (Guayas, Los Ríos, Manabí, Pichincha, Carchi, Tungurahua, Azuay, Loja, El Oro, Santo Domingo, etc.).

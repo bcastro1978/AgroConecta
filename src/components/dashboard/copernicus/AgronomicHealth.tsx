@@ -300,39 +300,23 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                         </div>
                                     </button>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                                        <button 
-                                            onClick={() => setSelectedParcelHistory(d)}
-                                            className="w-full bg-[#1E3F20]/5 hover:bg-[#1E3F20]/10 border border-[#1E3F20]/20 rounded-2xl p-3 flex items-center justify-between group/history transition-all active:scale-[0.98] cursor-pointer"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-[#1E3F20]/10 rounded-lg text-[#1E3F20] group-hover/history:scale-110 transition-transform">
-                                                    <BrainCircuit size={14} />
-                                                </div>
-                                                <div className="flex flex-col items-start">
-                                                    <span className="text-[7px] font-black text-[#1E3F20] uppercase tracking-widest">Historial IA</span>
-                                                    <span className="text-[10px] font-black text-[#0A0A0A] uppercase">Evolución Temporal</span>
-                                                </div>
-                                            </div>
-                                            <ArrowRight size={14} className="text-[#1E3F20]" />
-                                        </button>
-
-                                        <button 
-                                            onClick={() => setReportParcel({ ...d.parcel, sat_telemetry: d.all_telemetry })}
-                                            className="w-full bg-[#0A0A0A] hover:bg-[#1A1A1A] border border-[#0A0A0A]/20 rounded-2xl p-3 flex items-center justify-between group/report transition-all active:scale-[0.98] cursor-pointer"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-white/10 rounded-lg text-white group-hover/report:scale-110 transition-transform">
-                                                    <FileCheck size={14} />
-                                                </div>
-                                                <div className="flex flex-col items-start">
-                                                    <span className="text-[7px] font-black text-white/50 uppercase tracking-widest">Reporte</span>
-                                                    <span className="text-[10px] font-black text-white uppercase">Trazabilidad EUDR</span>
-                                                </div>
-                                            </div>
-                                            <ArrowRight size={14} className="text-white/50" />
-                                        </button>
-                                    </div>
+                                     <div className="mt-2">
+                                         <button 
+                                             onClick={() => setReportParcel({ ...d.parcel, sat_telemetry: d.all_telemetry })}
+                                             className="w-full bg-[#0A0A0A] hover:bg-[#1A1A1A] border border-[#0A0A0A]/20 rounded-2xl p-3.5 flex items-center justify-between group/report transition-all active:scale-[0.98] cursor-pointer shadow-lg"
+                                         >
+                                             <div className="flex items-center gap-3">
+                                                 <div className="p-2.5 bg-white/10 rounded-xl text-white group-hover/report:scale-110 transition-transform">
+                                                     <FileCheck size={16} />
+                                                 </div>
+                                                 <div className="flex flex-col items-start">
+                                                     <span className="text-[8px] font-black text-white/50 uppercase tracking-widest">Expediente Oficial</span>
+                                                     <span className="text-xs font-black text-white uppercase tracking-wider">Reporte Trazabilidad EUDR</span>
+                                                 </div>
+                                             </div>
+                                             <ArrowRight size={16} className="text-white group-hover/report:translate-x-1 transition-transform" />
+                                         </button>
+                                     </div>
                                 </div>
                             </div>
                         </div>
