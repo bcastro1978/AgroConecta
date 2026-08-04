@@ -14,7 +14,8 @@ serve(async (req) => {
   }
 
   try {
-    const { parcel_id } = await req.json()
+    const body = await req.json()
+    const { parcel_id, action } = body
 
     if (!parcel_id) {
       return new Response(
@@ -25,14 +26,41 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('VITE_SUPABASE_URL') || Deno.env.get('SUPABASE_URL')
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('VITE_SUPABASE_ANON_KEY')
-    const SH_CLIENT_ID = Deno.env.get('SENTINEL_CLIENT_ID')
-    const SH_CLIENT_SECRET = Deno.env.get('SENTINEL_CLIENT_SECRET')
 
-    if (!supabaseUrl || !supabaseKey || !SH_CLIENT_ID || !SH_CLIENT_SECRET) {
-      throw new Error("Faltan variables de entorno para Sentinel Hub o Supabase.")
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Faltan variables de entorno para Supabase.")
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // --- ACCIÓN DE ELIMINACIÓN DE PARCELA ---
+    if (action === 'delete') {
+      console.log(`[Delete Parcel] Eliminando parcela y registros asociados para parcel_id: ${parcel_id}`)
+
+      // 1. Eliminar telemetría
+      const { error: telErr } = await supabase.from('sat_telemetry').delete().eq('parcel_id', parcel_id)
+      if (telErr) console.error("Error borrando telemetría:", telErr)
+
+      // 2. Eliminar eventos de alertas
+      const { error: alErr } = await supabase.from('alerts_events').delete().eq('parcel_id', parcel_id)
+      if (alErr) console.error("Error borrando alertas:", alErr)
+
+      // 3. Eliminar la parcela
+      const { error: delErr } = await supabase.from('parcels').delete().eq('id', parcel_id)
+      if (delErr) throw new Error("Error borrando parcela: " + delErr.message)
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Parcela eliminada exitosamente' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const SH_CLIENT_ID = Deno.env.get('SENTINEL_CLIENT_ID')
+    const SH_CLIENT_SECRET = Deno.env.get('SENTINEL_CLIENT_SECRET')
+
+    if (!SH_CLIENT_ID || !SH_CLIENT_SECRET) {
+      throw new Error("Faltan variables de entorno para Sentinel Hub.")
+    }
 
     // Obtener la parcela
     const { data: parcel, error: parcelErr } = await supabase.from('parcels').select('*').eq('id', parcel_id).single()
@@ -129,7 +157,7 @@ function evaluatePixel(sample) {
         } catch(e) {}
     }
 
-    let ndviMean = 0.5; // Default/Mock for SAR fallback
+    let ndviMean = 0.5;
     let ndmiMean = 0.3;
     let bsiMean = 0.1;
     let missionUsed = 'Sentinel-2 L2A';

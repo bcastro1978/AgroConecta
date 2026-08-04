@@ -104,8 +104,22 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
             }
 
             setLoading(true);
-            
-            // 1. Eliminar registros de telemetría por ID primario
+
+            // 1. Intentar borrado seguro vía Edge Function (Service Role)
+            try {
+                const { data: edgeData, error: edgeErr } = await supabase.functions.invoke('sync-single-parcel', {
+                    body: { action: 'delete', parcel_id: parcelId }
+                });
+                if (!edgeErr && edgeData?.success) {
+                    alert(`✅ Parcela "${cropName}" eliminada correctamente.`);
+                    fetchData();
+                    return;
+                }
+            } catch (e) {
+                console.warn("Llamada Edge Function no disponible, utilizando borrado directo:", e);
+            }
+
+            // 2. Fallback: Borrado directo cliente
             const { data: telRows } = await supabase
                 .from('sat_telemetry')
                 .select('id')
@@ -116,7 +130,6 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                 await supabase.from('sat_telemetry').delete().in('id', telIds);
             }
 
-            // 2. Eliminar eventos de alertas por ID primario
             const { data: alertRows } = await supabase
                 .from('alerts_events')
                 .select('id')
@@ -127,7 +140,6 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                 await supabase.from('alerts_events').delete().in('id', alertIds);
             }
 
-            // 3. Eliminar la parcela
             const { error: delErr } = await supabase.from('parcels').delete().eq('id', parcelId);
             if (delErr) throw delErr;
 
