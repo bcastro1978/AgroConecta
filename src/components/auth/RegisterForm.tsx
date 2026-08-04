@@ -108,7 +108,7 @@ export const RegisterPage = () => {
                 {/* Header */}
                 <div className="flex flex-col items-center mb-8">
                     <div className="mb-6 cursor-pointer" onClick={() => navigate('/')}>
-                        <img src="/logo_final.png" alt="AgroConecta" className="h-16 w-auto" style={{ transform: "scale(2)" }} />
+                        <img src="/logo_final.png" alt="AgroConecta" className="h-28 w-auto mx-auto object-contain drop-shadow-sm" />
                     </div>
                     <h1 className="text-4xl font-black text-[#0A0A0A] tracking-tighter uppercase text-center mt-4">
                         {step === 'register' ? <>Únete a la <span className="text-[#1E3F20]">Red B2B</span></> : 'Verificación de Enlace'}
@@ -326,7 +326,7 @@ export const RegisterPage = () => {
                             <button 
                                 type="submit" 
                                 disabled={loading}
-                                className="w-full py-6 bg-[#1E3F20] hover:bg-emerald-400 disabled:bg-[#FAF9F7] disabled:text-slate-600 text-slate-950 rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] transition-all shadow-2xl shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
+                                className="w-full py-6 bg-[#1E3F20] hover:bg-emerald-600 disabled:bg-[#FAF9F7] disabled:text-slate-600 text-white rounded-[2.5rem] font-black text-sm uppercase tracking-[0.3em] transition-all shadow-2xl shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
                             >
                                 {loading ? (
                                     <><div className="w-5 h-5 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin"></div> CREANDO REGISTRO...</>

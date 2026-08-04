@@ -75,7 +75,7 @@ export const LandingPage = () => {
             {/* Header / Navigation */}
             <header className="h-20 border-b border-[#0A0A0A]/10 bg-[#FAF9F7]/95 backdrop-blur-md px-6 md:px-12 flex items-center justify-between sticky top-0 z-50">
                 <div className="flex items-center cursor-pointer" onClick={() => navigate('/')}>
-                    <img src="/logo_final.png" alt="AgroConecta" className="h-12 w-auto" style={{ transform: "scale(2.5)" }} />
+                    <img src="/logo_final.png" alt="AgroConecta" className="h-16 md:h-24 w-auto object-contain drop-shadow-sm" />
                 </div>
 
                 <nav className="hidden md:flex items-center gap-10 text-[10px] font-bold uppercase tracking-[0.2em] text-[#57534E]">
@@ -390,7 +390,7 @@ export const LandingPage = () => {
             <footer className="py-16 bg-[#FAF9F7] text-xs text-[#57534E]">
                 <div className="container px-6 md:px-12 mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
                           <div className="flex items-center mb-6">
-                              <img src="/logo_final.png" alt="AgroConecta" className="h-10 w-auto  " style={{ transform: "scale(2.5)" }} />
+                              <img src="/logo_final.png" alt="AgroConecta" className="h-16 w-auto object-contain drop-shadow-sm mb-4" />
                           </div>
                     <p className="text-center md:text-left">
                         © 2026 AgroConecta. Red B2B y Monitoreo Satelital de Deforestación en Ecuador. Todos los derechos reservados.

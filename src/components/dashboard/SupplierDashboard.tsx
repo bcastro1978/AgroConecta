@@ -7,7 +7,7 @@ import { B2BLeadsMap } from '../../pages/B2BLeadsMap';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
 import { LogOut, Truck, PlusCircle, Inbox, Satellite, Map as MapIcon, Activity, Sparkles, BrainCircuit } from 'lucide-react';
-import { BranchManager } from './BranchManager';
+import { BranchManager } from './ProviderBranchManager';
 
 export const SupplierDashboard = () => {
     const { profile } = useAuth();

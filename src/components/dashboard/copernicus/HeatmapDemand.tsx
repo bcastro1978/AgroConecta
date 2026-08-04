@@ -29,7 +29,7 @@ export const HeatmapDemand = () => {
                     let lng = -78.1834;
                     try {
                         // Very naive center calculation: takes the first coordinate of the first polygon
-                        const p = item.parcels?.geometry;
+                        const p = (item.parcels as any)?.geometry || (Array.isArray(item.parcels) && item.parcels[0]?.geometry);
                         if (p && p.coordinates && p.coordinates[0] && p.coordinates[0][0]) {
                             const coord = p.coordinates[0][0];
                             lng = coord[0];

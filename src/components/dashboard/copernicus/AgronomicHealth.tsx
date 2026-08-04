@@ -30,7 +30,6 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
             
             const parcelIds = parcels.map(p => p.id);
 
-            // OPTIMIZACIÓN: No traemos las imágenes Base64 pesadas en el listado inicial
             const { data: telemetryData } = await supabase
                 .from('sat_telemetry')
                 .select('id, parcel_id, timestamp, mission, ndvi_avg, ndmi_avg, bsi_avg, vv_avg, vh_avg, cloud_cover')
@@ -43,10 +42,18 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                 .in('parcel_id', parcelIds)
                 .order('notification_date', { ascending: false });
 
-            // Agrupar por parcelas
+            // Agrupar por parcelas y desduplicar lecturas de telemetría por fecha
             const parsedData = parcels.map(p => {
-                const pTelList = telemetryData?.filter(t => t.parcel_id === p.id) || [];
+                const rawTelList = telemetryData?.filter(t => t.parcel_id === p.id) || [];
                 const pAlerts = alertsData?.filter(a => a.parcel_id === p.id) || [];
+                
+                // Salvaguarda: Desduplicar registros por fecha
+                const pTelList = rawTelList.filter((t, index, self) =>
+                    index === self.findIndex(other => (
+                        other.id === t.id || new Date(other.timestamp).toDateString() === new Date(t.timestamp).toDateString()
+                    ))
+                );
+
                 return {
                     parcel: p,
                     latest_telemetry: pTelList[0] || null,
@@ -121,7 +128,7 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                 </div>
                 <button 
                     onClick={fetchData}
-                    className="p-3 bg-white hover:bg-[#FAF9F7] text-[#57534E] hover:text-[#1E3F20] border border-[#0A0A0A]/10 rounded-xl transition-all active:scale-95 group"
+                    className="p-3 bg-white hover:bg-[#FAF9F7] text-[#57534E] hover:text-[#1E3F20] border border-[#0A0A0A]/10 rounded-xl transition-all active:scale-95 group cursor-pointer"
                     title="Actualizar Datos"
                 >
                     <Clock size={20} className="group-hover:rotate-12 transition-transform" />
@@ -143,12 +150,35 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                         <Satellite size={28} className="animate-bounce" />
                                     </div>
                                 </div>
-                                <div className="mt-4 relative z-10">
+                                <div className="mt-4 relative z-10 flex flex-col items-center">
                                     <h4 className="font-black text-[#0A0A0A] text-base uppercase tracking-tight">{d.parcel.active_crop}</h4>
-                                    <div className="flex items-center justify-center gap-2 mt-2">
-                                        <div className="w-1 h-1 bg-[#1E3F20] rounded-full animate-ping"></div>
-                                        <p className="text-[9px] font-black text-[#1E3F20] uppercase tracking-[0.2em]">Sincronizando CDSE</p>
+                                    <div className="flex items-center justify-center gap-2 mt-2 mb-4">
+                                        <div className="w-1 h-1 bg-amber-500 rounded-full animate-ping"></div>
+                                        <p className="text-[9px] font-black text-amber-600 uppercase tracking-[0.2em]">Sincronización Incompleta</p>
                                     </div>
+                                    <button 
+                                        onClick={async () => {
+                                            setLoading(true);
+                                            try {
+                                                const { syncSingleParcel } = await import('../../../lib/copernicusSync');
+                                                const success = await syncSingleParcel(d.parcel.id);
+                                                if(success) {
+                                                    alert("Telemetría descargada exitosamente.");
+                                                    fetchData();
+                                                } else {
+                                                    alert("Fallo al contactar Sentinel Hub.");
+                                                }
+                                            } catch(e) {
+                                                console.error(e);
+                                                alert("Error de sincronización.");
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                        className="bg-[#1E3F20] hover:bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
+                                    >
+                                        Forzar Sincronización
+                                    </button>
                                 </div>
                             </div>
                         );
@@ -220,7 +250,7 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                                 </p>
                                                 <div className="bg-[#1E3F20]/5 border border-[#1E3F20]/20 rounded-xl p-3">
                                                     <p className="text-[8px] font-black text-[#1E3F20] uppercase tracking-widest mb-1">Hoja de Ruta Sugerida</p>
-                                                    <p className="text-[10px] text-emerald-100/80 leading-relaxed italic">
+                                                    <p className="text-[10px] text-[#1E3F20]/90 leading-relaxed italic">
                                                         {a.action_suggested}
                                                     </p>
                                                 </div>
@@ -229,87 +259,87 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                                     )}
                                 </div>
 
-                                    {/* Action Buttons */}
-                                    <div className="mt-4 flex flex-col gap-2">
-                                        <button 
-                                            className="w-full bg-[#FAF9F7]/50 hover:bg-[#1E3F20]/5 border border-[#0A0A0A]/10 hover:border-[#1E3F20]/20 rounded-2xl p-3 flex items-center justify-between group/btn transition-all active:scale-[0.98]"
-                                            onClick={async () => {
-                                                if (d.images) {
-                                                    setSelectedParcel({ ...d, images: d.images });
-                                                } else {
-                                                    const images = await fetchFullImage(t.id);
-                                                    setSelectedParcel({ ...d, images });
-                                                }
-                                            }}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-white rounded-lg text-slate-500 group-hover/btn:text-[#1E3F20] transition-colors">
-                                                    <Map size={14} />
-                                                </div>
-                                                <div className="flex flex-col items-start">
-                                                    <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Análisis Multiespectral</span>
-                                                    <span className="text-[10px] font-black text-[#0A0A0A] uppercase group-hover/btn:text-[#1E3F20] transition-colors">Visualización Satelital</span>
-                                                </div>
+                                {/* Action Buttons */}
+                                <div className="p-5 lg:p-6 bg-[#FAF9F7]/30 flex flex-col gap-2">
+                                    <button 
+                                        className="w-full bg-[#FAF9F7]/80 hover:bg-[#1E3F20]/5 border border-[#0A0A0A]/10 hover:border-[#1E3F20]/20 rounded-2xl p-3 flex items-center justify-between group/btn transition-all active:scale-[0.98] cursor-pointer"
+                                        onClick={async () => {
+                                            if (d.images) {
+                                                setSelectedParcel({ ...d, images: d.images });
+                                            } else {
+                                                const images = await fetchFullImage(t.id);
+                                                setSelectedParcel({ ...d, images });
+                                            }
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white rounded-lg text-slate-500 group-hover/btn:text-[#1E3F20] transition-colors">
+                                                <Map size={14} />
                                             </div>
-                                            <div className="bg-[#1E3F20]/5 p-1.5 rounded-lg border border-[#1E3F20]/20 opacity-40 group-hover/btn:opacity-100 transition-all">
-                                                <Target size={12} className="text-[#1E3F20] animate-pulse" />
+                                            <div className="flex flex-col items-start">
+                                                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Análisis Multiespectral</span>
+                                                <span className="text-[10px] font-black text-[#0A0A0A] uppercase group-hover/btn:text-[#1E3F20] transition-colors">Visualización Satelital</span>
                                             </div>
-                                        </button>
-
-                                        <button 
-                                            onClick={() => onEditParcel(d.parcel)}
-                                            className="w-full bg-white/90 hover:bg-[#C5A059]/10 border border-[#0A0A0A]/10 hover:border-[#C5A059]/20 rounded-2xl p-3 flex items-center justify-between group/edit transition-all active:scale-[0.98]"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-[#FAF9F7] rounded-lg text-slate-500 group-hover/edit:text-[#C5A059] transition-colors">
-                                                    <ArrowRight size={14} className="rotate-[-45deg]" />
-                                                </div>
-                                                <div className="flex flex-col items-start">
-                                                    <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Geometría de Parcela</span>
-                                                    <span className="text-[10px] font-black text-[#0A0A0A] uppercase group-hover/edit:text-[#C5A059] transition-colors">Ajustar Dimensiones</span>
-                                                </div>
-                                            </div>
-                                            <div className="bg-[#C5A059]/10 p-1.5 rounded-lg border border-cyan-500/20 opacity-40 group-hover/edit:opacity-100 transition-all">
-                                                <MapPin size={12} className="text-cyan-500" />
-                                            </div>
-                                        </button>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                                            <button 
-                                                onClick={() => setSelectedParcelHistory(d)}
-                                                className="w-full bg-[#1E3F20]/5 hover:bg-[#1E3F20]/10 border border-[#1E3F20]/20 rounded-2xl p-3 flex items-center justify-between group/history transition-all active:scale-[0.98]"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-[#1E3F20]/10 rounded-lg text-[#1E3F20] group-hover/history:scale-110 transition-transform">
-                                                        <BrainCircuit size={14} />
-                                                    </div>
-                                                    <div className="flex flex-col items-start">
-                                                        <span className="text-[7px] font-black text-[#1E3F20] uppercase tracking-widest">Dashboard</span>
-                                                        <span className="text-[10px] font-black text-[#0A0A0A] uppercase">Agrónomo IA</span>
-                                                    </div>
-                                                </div>
-                                                <ArrowRight size={14} className="text-[#1E3F20]" />
-                                            </button>
-
-                                            <button 
-                                                onClick={() => setReportParcel({ ...d.parcel, sat_telemetry: d.all_telemetry })}
-                                                className="w-full bg-[#0A0A0A] hover:bg-[#1A1A1A] border border-[#0A0A0A]/20 rounded-2xl p-3 flex items-center justify-between group/report transition-all active:scale-[0.98]"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-white/10 rounded-lg text-white group-hover/report:scale-110 transition-transform">
-                                                        <FileCheck size={14} />
-                                                    </div>
-                                                    <div className="flex flex-col items-start">
-                                                        <span className="text-[7px] font-black text-white/50 uppercase tracking-widest">Reporte</span>
-                                                        <span className="text-[10px] font-black text-white uppercase">Trazabilidad EUDR</span>
-                                                    </div>
-                                                </div>
-                                                <ArrowRight size={14} className="text-white/50" />
-                                            </button>
                                         </div>
+                                        <div className="bg-[#1E3F20]/5 p-1.5 rounded-lg border border-[#1E3F20]/20 opacity-40 group-hover/btn:opacity-100 transition-all">
+                                            <Target size={12} className="text-[#1E3F20] animate-pulse" />
+                                        </div>
+                                    </button>
+
+                                    <button 
+                                        onClick={() => onEditParcel(d.parcel)}
+                                        className="w-full bg-white/90 hover:bg-[#C5A059]/10 border border-[#0A0A0A]/10 hover:border-[#C5A059]/20 rounded-2xl p-3 flex items-center justify-between group/edit transition-all active:scale-[0.98] cursor-pointer"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-[#FAF9F7] rounded-lg text-slate-500 group-hover/edit:text-[#C5A059] transition-colors">
+                                                <ArrowRight size={14} className="rotate-[-45deg]" />
+                                            </div>
+                                            <div className="flex flex-col items-start">
+                                                <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Geometría de Parcela</span>
+                                                <span className="text-[10px] font-black text-[#0A0A0A] uppercase group-hover/edit:text-[#C5A059] transition-colors">Ajustar Dimensiones</span>
+                                            </div>
+                                        </div>
+                                        <div className="bg-[#C5A059]/10 p-1.5 rounded-lg border border-cyan-500/20 opacity-40 group-hover/edit:opacity-100 transition-all">
+                                            <MapPin size={12} className="text-cyan-500" />
+                                        </div>
+                                    </button>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                                        <button 
+                                            onClick={() => setSelectedParcelHistory(d)}
+                                            className="w-full bg-[#1E3F20]/5 hover:bg-[#1E3F20]/10 border border-[#1E3F20]/20 rounded-2xl p-3 flex items-center justify-between group/history transition-all active:scale-[0.98] cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-[#1E3F20]/10 rounded-lg text-[#1E3F20] group-hover/history:scale-110 transition-transform">
+                                                    <BrainCircuit size={14} />
+                                                </div>
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-[7px] font-black text-[#1E3F20] uppercase tracking-widest">Historial IA</span>
+                                                    <span className="text-[10px] font-black text-[#0A0A0A] uppercase">Evolución Temporal</span>
+                                                </div>
+                                            </div>
+                                            <ArrowRight size={14} className="text-[#1E3F20]" />
+                                        </button>
+
+                                        <button 
+                                            onClick={() => setReportParcel({ ...d.parcel, sat_telemetry: d.all_telemetry })}
+                                            className="w-full bg-[#0A0A0A] hover:bg-[#1A1A1A] border border-[#0A0A0A]/20 rounded-2xl p-3 flex items-center justify-between group/report transition-all active:scale-[0.98] cursor-pointer"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-white/10 rounded-lg text-white group-hover/report:scale-110 transition-transform">
+                                                    <FileCheck size={14} />
+                                                </div>
+                                                <div className="flex flex-col items-start">
+                                                    <span className="text-[7px] font-black text-white/50 uppercase tracking-widest">Reporte</span>
+                                                    <span className="text-[10px] font-black text-white uppercase">Trazabilidad EUDR</span>
+                                                </div>
+                                            </div>
+                                            <ArrowRight size={14} className="text-white/50" />
+                                        </button>
                                     </div>
                                 </div>
                             </div>
+                        </div>
                     );
                 })}
 
@@ -326,209 +356,231 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
                 )}
             </div>
 
-            {/* Comparison Modal - Deep Tech */}
+            {/* Modal Radiometría CDSE - Full Responsive Scrollable Layout */}
             {selectedParcel && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8">
-                    <div className="absolute inset-0 bg-[#FAF9F7]/95 backdrop-blur-xl" onClick={() => setSelectedParcel(null)}></div>
-                    
-                    <div className="relative bg-white w-full max-w-[95vw] max-h-[95vh] rounded-[2.5rem] border border-[#0A0A0A]/10 shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
-                        {/* Modal Header */}
-                        <div className="p-6 lg:px-10 border-b border-[#0A0A0A]/10 flex items-center justify-between bg-white/90 backdrop-blur-md sticky top-0 z-20">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="relative bg-white w-full max-w-5xl max-h-[90vh] rounded-[2.5rem] border border-[#0A0A0A]/10 shadow-2xl overflow-hidden flex flex-col">
+                        
+                        {/* Header */}
+                        <div className="p-6 border-b border-[#0A0A0A]/10 flex items-center justify-between bg-white shrink-0">
                             <div>
                                 <div className="flex items-center gap-3 mb-1">
-                                    <span className="px-2 py-0.5 bg-[#1E3F20]/5 text-[#1E3F20] text-[9px] font-black uppercase tracking-widest rounded-full border border-[#1E3F20]/20">Análisis Multiespectral</span>
+                                    <span className="px-2 py-0.5 bg-[#1E3F20]/10 text-[#1E3F20] text-[9px] font-black uppercase tracking-widest rounded-full border border-[#1E3F20]/20">Análisis Multiespectral</span>
                                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Sentinel-2 • 10m/px</span>
                                 </div>
-                                <h2 className="text-2xl lg:text-3xl font-black text-[#0A0A0A] uppercase tracking-tighter">
-                                    {selectedParcel.parcel.active_crop} <span className="text-slate-700">|</span> <span className="text-[#57534E]">Radiometría CDSE</span>
+                                <h2 className="text-2xl font-black text-[#0A0A0A] uppercase tracking-tighter">
+                                    {selectedParcel.parcel.active_crop} <span className="text-slate-400">|</span> <span className="text-[#57534E]">Radiometría CDSE</span>
                                 </h2>
                             </div>
                             <button 
                                 onClick={() => setSelectedParcel(null)}
-                                className="bg-white/5 hover:bg-white/10 p-3 rounded-2xl transition-colors text-[#0A0A0A]"
+                                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-[#0A0A0A] rounded-2xl transition-colors cursor-pointer"
                             >
-                                <X size={24} />
+                                <X size={20} />
                             </button>
                         </div>
 
+                        {/* Scrollable Content Container */}
+                        <div className="overflow-y-auto flex-1 p-6 space-y-6 bg-[#FAF9F7]">
+                            
                             {/* Educational Legend for Producers */}
-                            <div className="flex gap-4 items-center bg-white/90 p-2 px-4 rounded-xl border border-[#0A0A0A]/10">
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest text-center">Vigor (NDVI)</span>
-                                    <div className="flex h-1.5 w-24 rounded-full overflow-hidden border border-[#0A0A0A]/10">
-                                        <div className="h-full w-1/3 bg-red-500"></div>
-                                        <div className="h-full w-1/3 bg-amber-500"></div>
-                                        <div className="h-full w-1/3 bg-[#1E3F20]"></div>
+                            <div className="flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-[#0A0A0A]/10 shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Vigor Vegetativo (NDVI)</span>
+                                        <div className="flex h-2 w-32 rounded-full overflow-hidden border border-[#0A0A0A]/10">
+                                            <div className="h-full w-1/3 bg-red-500"></div>
+                                            <div className="h-full w-1/3 bg-amber-500"></div>
+                                            <div className="h-full w-1/3 bg-[#1E3F20]"></div>
+                                        </div>
+                                        <div className="flex justify-between text-[7px] font-bold text-[#57534E]">
+                                            <span>ESTRÉS (BAJO)</span>
+                                            <span>ÓPTIMO (ALTO)</span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between text-[6px] font-bold text-[#57534E]">
-                                        <span>ESTRÉS</span>
-                                        <span>SANO</span>
+
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Estrés Hídrico (NDMI)</span>
+                                        <div className="flex h-2 w-32 rounded-full overflow-hidden border border-[#0A0A0A]/10">
+                                            <div className="h-full w-1/3 bg-orange-500"></div>
+                                            <div className="h-full w-1/3 bg-blue-500"></div>
+                                            <div className="h-full w-1/3 bg-cyan-500"></div>
+                                        </div>
+                                        <div className="flex justify-between text-[7px] font-bold text-[#57534E]">
+                                            <span>SECO</span>
+                                            <span>ÓPTIMO</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest text-center">Agua (NDMI)</span>
-                                    <div className="flex h-1.5 w-24 rounded-full overflow-hidden border border-[#0A0A0A]/10">
-                                        <div className="h-full w-1/3 bg-orange-500"></div>
-                                        <div className="h-full w-1/3 bg-blue-500"></div>
-                                        <div className="h-full w-1/3 bg-cyan-500"></div>
+
+                                <div className="text-right">
+                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Escaneo Satelital</span>
+                                    <p className="text-xs font-black text-[#1E3F20]">{new Date(selectedParcel.latest_telemetry.timestamp).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+
+                            {/* Imagery Display Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* True Color */}
+                                <div className="relative group overflow-hidden rounded-2xl border border-[#0A0A0A]/10 flex items-center justify-center bg-slate-900 min-h-[260px]">
+                                    {selectedParcel.images?.image_rgb_base64 && selectedParcel.images.image_rgb_base64.trim() !== '' ? (
+                                        <img 
+                                            src={selectedParcel.images.image_rgb_base64} 
+                                            className="w-full max-h-[340px] object-contain" 
+                                            alt="True Color"
+                                        />
+                                    ) : (
+                                        <div className="p-8 text-center space-y-3">
+                                            <Satellite size={36} className="text-[#1E3F20] animate-bounce mx-auto" />
+                                            <p className="text-white text-xs font-black uppercase tracking-wider">Capa Óptica (Color Real)</p>
+                                            <p className="text-slate-400 text-[10px] font-bold">Procesando firma multiespectral Sentinel-2 CDSE...</p>
+                                        </div>
+                                    )}
+                                    <div className="absolute top-3 left-3 bg-[#FAF9F7]/90 backdrop-blur-md border border-[#0A0A0A]/10 text-[#0A0A0A] px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">
+                                        {selectedParcel.latest_telemetry.mission?.includes('SAR') ? '📡 Sensor Radar SAR' : '📷 Óptico: Color Real'}
                                     </div>
-                                    <div className="flex justify-between text-[6px] font-bold text-[#57534E]">
-                                        <span>SECO</span>
-                                        <span>ÓPTIMO</span>
+                                </div>
+
+                                {/* False Color / NDVI */}
+                                <div className="relative group overflow-hidden rounded-2xl border border-[#0A0A0A]/10 flex items-center justify-center bg-slate-900 min-h-[260px]">
+                                    {selectedParcel.images?.image_base64 && selectedParcel.images.image_base64.trim() !== '' ? (
+                                        <img 
+                                            src={selectedParcel.images.image_base64} 
+                                            className="w-full max-h-[340px] object-contain" 
+                                            alt="False Color"
+                                        />
+                                    ) : (
+                                        <div className="p-8 text-center space-y-3">
+                                            <Activity size={36} className="text-[#1E3F20] animate-pulse mx-auto" />
+                                            <p className="text-white text-xs font-black uppercase tracking-wider">Matriz de Vigor Vegetativo (NDVI)</p>
+                                            <p className="text-slate-400 text-[10px] font-bold">Resolución espectral de 10m/px en proceso...</p>
+                                        </div>
+                                    )}
+                                    <div className="absolute top-3 left-3 bg-[#1E3F20] text-white px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md">
+                                        {selectedParcel.latest_telemetry.mission?.includes('SAR') ? '🔍 Analítica Estructural' : '🔥 Vigor Vegetativo (NDVI)'}
                                     </div>
                                 </div>
                             </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 bg-[#FAF9F7]">
-                            {/* Color Real */}
-                            <div className="relative group overflow-hidden border-r border-[#0A0A0A]/10 flex items-center justify-center bg-black">
-                                <img 
-                                    src={selectedParcel.images?.image_rgb_base64 && selectedParcel.images?.image_rgb_base64.trim() !== "" 
-                                        ? selectedParcel.images.image_rgb_base64 
-                                        : 'https://via.placeholder.com/600x600?text=Cargando+Imagen...'} 
-                                    className="w-full max-h-[400px] object-contain" 
-                                    alt="True Color"
-                                />
-                                <div className="absolute top-4 left-4 bg-[#FAF9F7]/80 backdrop-blur-xl border border-[#0A0A0A]/10 text-[#0A0A0A] px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-2xl">
-                                    {selectedParcel.latest_telemetry.mission?.includes('SAR') ? '📡 Sensor Radar SAR' : '📷 Óptico: Color Real'}
-                                </div>
-                            </div>
-
-                            {/* Analytics Overlay */}
-                            <div className="relative group overflow-hidden flex items-center justify-center bg-black">
-                                <img 
-                                    src={selectedParcel.images?.image_base64} 
-                                    className="w-full max-h-[400px] object-contain" 
-                                    alt="False Color"
-                                />
-                                <div className="absolute top-4 left-4 bg-[#1E3F20] text-slate-950 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-2xl shadow-emerald-500/20">
-                                    {selectedParcel.latest_telemetry.mission?.includes('SAR') ? '🔍 Analítica Estructural' : '🔥 Vigor Vegetativo (NDVI)'}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-4 lg:p-6 bg-[#FAF9F7]/80 border-t border-[#0A0A0A]/10">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-white p-4 rounded-2xl border border-[#0A0A0A]/10 relative overflow-hidden group/mini shadow-2xl">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent"></div>
-                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 relative z-10">
+                            {/* KPI Metrics */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-white p-4 rounded-2xl border border-[#0A0A0A]/10 shadow-sm space-y-1">
+                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                                         {selectedParcel.latest_telemetry.mission?.includes('SAR') ? 'Reflectancia (VH)' : 'Promedio NDVI'}
                                     </p>
-                                    <p className="text-2xl font-black text-[#1E3F20] relative z-10 leading-none">
+                                    <p className="text-2xl font-black text-[#1E3F20]">
                                         {selectedParcel.latest_telemetry.mission?.includes('SAR') 
                                             ? (selectedParcel.latest_telemetry.vh_avg || selectedParcel.latest_telemetry.bsi_avg || 0).toFixed(4)
                                             : (selectedParcel.latest_telemetry.ndvi_avg * 100).toFixed(1) + '%'
                                         }
                                     </p>
                                 </div>
-                                <div className="bg-white p-4 rounded-2xl border border-[#0A0A0A]/10 relative overflow-hidden group/mini shadow-2xl">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent"></div>
-                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 relative z-10">
+                                <div className="bg-white p-4 rounded-2xl border border-[#0A0A0A]/10 shadow-sm space-y-1">
+                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                                         {selectedParcel.latest_telemetry.mission?.includes('SAR') ? 'Reflectancia (VV)' : 'Estrés Hídrico'}
                                     </p>
-                                    <p className="text-2xl font-black text-[#C5A059] relative z-10 leading-none">
+                                    <p className="text-2xl font-black text-[#C5A059]">
                                         {selectedParcel.latest_telemetry.mission?.includes('SAR') 
                                             ? (selectedParcel.latest_telemetry.vv_avg || selectedParcel.latest_telemetry.ndmi_avg || 0).toFixed(4)
                                             : (selectedParcel.latest_telemetry.ndmi_avg * 100).toFixed(1) + '%'
                                         }
                                     </p>
                                 </div>
-                                <div className="bg-white p-4 rounded-2xl border border-[#0A0A0A]/10 relative overflow-hidden group/mini shadow-2xl">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
-                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 relative z-10">Agencia Espacial</p>
-                                    <p className="text-base font-black text-[#0A0A0A] relative z-10 uppercase mt-0.5 leading-none">{selectedParcel.latest_telemetry.mission || 'Sentinel-2 CDSE'}</p>
+                                <div className="bg-white p-4 rounded-2xl border border-[#0A0A0A]/10 shadow-sm space-y-1">
+                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Agencia Espacial</p>
+                                    <p className="text-base font-black text-[#0A0A0A] uppercase mt-1">
+                                        {selectedParcel.latest_telemetry.mission || 'Sentinel-2 CDSE'}
+                                    </p>
                                 </div>
                             </div>
+
                         </div>
                     </div>
                 </div>
             )}
+
             {/* Historical AI Dashboard Modal */}
             {selectedParcelHistory && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8">
-                    <div className="absolute inset-0 bg-[#FAF9F7]/95 backdrop-blur-xl" onClick={() => setSelectedParcelHistory(null)}></div>
-                    
-                    <div className="relative bg-white w-full max-w-5xl max-h-[95vh] rounded-[2.5rem] border border-[#0A0A0A]/10 shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
-                        <div className="p-6 lg:px-10 border-b border-[#0A0A0A]/10 flex items-center justify-between bg-white/90 backdrop-blur-md sticky top-0 z-20">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="relative bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] border border-[#0A0A0A]/10 shadow-2xl overflow-hidden flex flex-col">
+                        
+                        {/* Header */}
+                        <div className="p-6 border-b border-[#0A0A0A]/10 flex items-center justify-between bg-white shrink-0">
                             <div>
-                                <div className="flex items-center gap-3 mb-1">
-                                    <span className="px-2 py-0.5 bg-[#1E3F20]/5 text-[#1E3F20] text-[9px] font-black uppercase tracking-widest rounded-full border border-[#1E3F20]/20">Dashboard Histórico</span>
-                                </div>
-                                <h2 className="text-2xl lg:text-3xl font-black text-[#0A0A0A] uppercase tracking-tighter">
-                                    {selectedParcelHistory.parcel.active_crop} <span className="text-slate-700">|</span> <span className="text-[#57534E]">Evolución Agronómica IA</span>
+                                <span className="px-2.5 py-0.5 bg-[#1E3F20]/10 text-[#1E3F20] text-[9px] font-black uppercase tracking-widest rounded-full border border-[#1E3F20]/20">Dashboard Histórico</span>
+                                <h2 className="text-2xl font-black text-[#0A0A0A] uppercase tracking-tighter mt-1">
+                                    {selectedParcelHistory.parcel.active_crop} <span className="text-slate-400">|</span> <span className="text-[#57534E]">Evolución Agronómica IA</span>
                                 </h2>
                             </div>
                             <button 
                                 onClick={() => setSelectedParcelHistory(null)}
-                                className="bg-white/5 hover:bg-slate-100 p-3 rounded-2xl transition-colors text-[#0A0A0A]"
+                                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-[#0A0A0A] rounded-2xl transition-colors cursor-pointer"
                             >
-                                <X size={24} />
+                                <X size={20} />
                             </button>
                         </div>
                         
-                        <div className="overflow-y-auto p-6 lg:p-10 bg-[#FAF9F7]/50 flex-1">
-                            <div className="space-y-8">
-                                {selectedParcelHistory.all_telemetry.map((tel: any, i: number) => {
-                                    // Find matching AI diagnosis in alerts
-                                    const diagnosis = selectedParcelHistory.all_alerts.find((a: any) => 
-                                        a.anomaly_type.includes('Diagnóstico IA:') && 
-                                        new Date(a.notification_date).toDateString() === new Date(tel.created_at).toDateString()
-                                    );
+                        {/* Content List */}
+                        <div className="overflow-y-auto p-6 bg-[#FAF9F7] flex-1 space-y-6">
+                            {selectedParcelHistory.all_telemetry.map((tel: any) => {
+                                const diagnosis = selectedParcelHistory.all_alerts.find((a: any) => 
+                                    a.anomaly_type.includes('Diagnóstico IA:') && 
+                                    Math.abs(new Date(a.notification_date).getTime() - new Date(tel.timestamp).getTime()) < 24 * 60 * 60 * 1000
+                                );
 
-                                    return (
-                                        <div key={tel.id} className="bg-white p-6 rounded-[2rem] border border-[#0A0A0A]/10 shadow-xl relative overflow-hidden group">
-                                            <div className="absolute top-0 left-0 w-2 h-full bg-[#1E3F20]/20 group-hover:bg-[#1E3F20] transition-colors"></div>
-                                            
-                                            <div className="flex flex-col lg:flex-row gap-8 pl-4">
-                                                {/* KPI Column */}
-                                                <div className="lg:w-1/3 space-y-4">
-                                                    <div className="flex items-center gap-2 mb-4">
-                                                        <Clock size={16} className="text-slate-400" />
-                                                        <p className="font-bold text-slate-600">{new Date(tel.timestamp).toLocaleDateString()}</p>
-                                                    </div>
-                                                    
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div className="bg-[#FAF9F7] p-4 rounded-xl border border-[#0A0A0A]/5">
-                                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">NDVI (Salud)</p>
-                                                            <p className="text-xl font-black text-[#1E3F20]">{tel.ndvi_avg ? (tel.ndvi_avg * 100).toFixed(1) + '%' : '--'}</p>
-                                                        </div>
-                                                        <div className="bg-[#FAF9F7] p-4 rounded-xl border border-[#0A0A0A]/5">
-                                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">NDMI (Agua)</p>
-                                                            <p className="text-xl font-black text-[#C5A059]">{tel.ndmi_avg ? (tel.ndmi_avg * 100).toFixed(1) + '%' : '--'}</p>
-                                                        </div>
-                                                    </div>
+                                return (
+                                    <div key={tel.id} className="bg-white p-6 rounded-3xl border border-[#0A0A0A]/10 shadow-sm relative overflow-hidden group">
+                                        <div className="absolute top-0 left-0 w-2 h-full bg-[#1E3F20]"></div>
+                                        
+                                        <div className="flex flex-col lg:flex-row gap-6 pl-2">
+                                            {/* KPI Column */}
+                                            <div className="lg:w-1/3 space-y-3">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Clock size={16} className="text-slate-400" />
+                                                    <p className="font-bold text-slate-700 text-sm">{new Date(tel.timestamp).toLocaleDateString()}</p>
                                                 </div>
                                                 
-                                                {/* AI Analysis Column */}
-                                                <div className="flex-1">
-                                                    {diagnosis ? (
-                                                        <div className="h-full bg-[#1E3F20]/5 rounded-2xl p-6 border border-[#1E3F20]/20 flex flex-col justify-center">
-                                                            <div className="flex items-center gap-3 mb-3">
-                                                                <BrainCircuit className="text-[#1E3F20]" size={20} />
-                                                                <h4 className="font-black text-[#0A0A0A] uppercase tracking-tight">{diagnosis.anomaly_type.replace('Diagnóstico IA:', '')}</h4>
-                                                                <span className={`px-2 py-1 text-[8px] font-black uppercase tracking-widest rounded-full ${diagnosis.severity === 'Alta' ? 'bg-red-100 text-red-700' : diagnosis.severity === 'Media' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                                    Prioridad: {diagnosis.severity}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-sm text-[#57534E] leading-relaxed">
-                                                                {diagnosis.action_suggested}
-                                                            </p>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="h-full bg-slate-50 rounded-2xl p-6 border border-slate-200 flex items-center justify-center text-center">
-                                                            <p className="text-sm text-slate-400 font-medium">No se encontró análisis de IA para esta fecha. (Puede ser un registro antiguo o generado sin Gemini).</p>
-                                                        </div>
-                                                    )}
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="bg-[#FAF9F7] p-3 rounded-2xl border border-[#0A0A0A]/5">
+                                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">NDVI (Salud)</p>
+                                                        <p className="text-lg font-black text-[#1E3F20]">{tel.ndvi_avg ? (tel.ndvi_avg * 100).toFixed(1) + '%' : '--'}</p>
+                                                    </div>
+                                                    <div className="bg-[#FAF9F7] p-3 rounded-2xl border border-[#0A0A0A]/5">
+                                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">NDMI (Agua)</p>
+                                                        <p className="text-lg font-black text-[#C5A059]">{tel.ndmi_avg ? (tel.ndmi_avg * 100).toFixed(1) + '%' : '--'}</p>
+                                                    </div>
                                                 </div>
                                             </div>
+                                            
+                                            {/* AI Analysis Column */}
+                                            <div className="flex-1">
+                                                {diagnosis ? (
+                                                    <div className="h-full bg-[#1E3F20]/5 rounded-2xl p-5 border border-[#1E3F20]/20 flex flex-col justify-center space-y-2">
+                                                        <div className="flex items-center gap-3 flex-wrap">
+                                                            <BrainCircuit className="text-[#1E3F20]" size={18} />
+                                                            <h4 className="font-black text-[#0A0A0A] text-sm uppercase tracking-tight">{diagnosis.anomaly_type.replace('Diagnóstico IA:', '')}</h4>
+                                                            <span className={`px-2.5 py-0.5 text-[8px] font-black uppercase tracking-widest rounded-full ${diagnosis.severity === 'Alta' ? 'bg-red-100 text-red-700' : diagnosis.severity === 'Media' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                                Prioridad: {diagnosis.severity}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-[#57534E] leading-relaxed font-medium">
+                                                            {diagnosis.action_suggested}
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-full bg-slate-50 rounded-2xl p-5 border border-slate-200 flex items-center justify-center text-center">
+                                                        <p className="text-xs text-slate-400 font-medium">Escaneo radiométrico registrado. Diagnóstico IA no emitido.</p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                );
+                            })}
 
-                                {selectedParcelHistory.all_telemetry.length === 0 && (
-                                    <div className="text-center py-12 text-slate-500">No hay historial disponible.</div>
-                                )}
-                            </div>
+                            {selectedParcelHistory.all_telemetry.length === 0 && (
+                                <div className="text-center py-12 text-slate-500 font-bold uppercase text-xs">No hay historial disponible.</div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -536,12 +588,10 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
             
             {/* Traceability Report EUDR Modal */}
             {reportParcel && (
-                <div className="fixed inset-0 z-[150]">
-                    <TraceabilityReport 
-                        parcel={reportParcel} 
-                        onClose={() => setReportParcel(null)} 
-                    />
-                </div>
+                <TraceabilityReport 
+                    parcel={reportParcel} 
+                    onClose={() => setReportParcel(null)} 
+                />
             )}
         </div>
     );

@@ -1,0 +1,212 @@
+{
+  "main": {
+    "id": "da3ff1c69af32fcb",
+    "type": "split",
+    "children": [
+      {
+        "id": "ca6dc8a0d8bc722c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "2b86abdd4eeac4e0",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "AgroConecta/01_Arquitectura/Agente_IA_LangGraph.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Agente_IA_LangGraph"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "b4a0c5eaca692a1e",
+    "type": "split",
+    "children": [
+      {
+        "id": "d428efeef10509c1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5831bfb12041c44e",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorador de archivos"
+            }
+          },
+          {
+            "id": "3275bae1e6c808c5",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Buscar"
+            }
+          },
+          {
+            "id": "c0db2c4eb184fbbe",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Marcadores"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 536.5
+  },
+  "right": {
+    "id": "33c17b53a6c8195c",
+    "type": "split",
+    "children": [
+      {
+        "id": "038a62a69422af27",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8fecc7fa726c6fcc",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "AgroConecta/04_Modulos/Modulo_Dashboard_Comprador_Proveedor.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Enlaces entrantes de Modulo_Dashboard_Comprador_Proveedor"
+            }
+          },
+          {
+            "id": "3447439feeccfeb7",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "AgroConecta/04_Modulos/Modulo_Dashboard_Comprador_Proveedor.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Enlaces salientes de Modulo_Dashboard_Comprador_Proveedor"
+            }
+          },
+          {
+            "id": "c634615b073a12c1",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Etiquetas"
+            }
+          },
+          {
+            "id": "f3a2d167db969b17",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Todas las propiedades"
+            }
+          },
+          {
+            "id": "39131f72b0873f31",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "AgroConecta/04_Modulos/Modulo_Dashboard_Comprador_Proveedor.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Esquema de Modulo_Dashboard_Comprador_Proveedor"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Abrir selector rápido": false,
+      "graph:Abrir vista gráfica": false,
+      "canvas:Crear nuevo lienzo": false,
+      "daily-notes:Abrir la nota de hoy": false,
+      "templates:Insertar plantilla": false,
+      "command-palette:Abrir paleta de comandos": false,
+      "bases:Crear nueva base": false
+    }
+  },
+  "active": "2b86abdd4eeac4e0",
+  "lastOpenFiles": [
+    "AgroConecta/04_Modulos/Casos_de_Uso.md",
+    "AgroConecta/Inicio.md",
+    "AgroConecta/04_Modulos/Indice_Modulos.md",
+    "AgroConecta/04_Modulos/Modulo_Dashboard_Productor.md",
+    "AgroConecta/04_Modulos/Modulo_Dashboard_Comprador_Proveedor.md",
+    "AgroConecta/04_Modulos/Modulo_Inteligencia_Artificial.md",
+    "AgroConecta/Especificaciones_Tecnicas.md",
+    "AgroConecta/04_Modulos/Requerimientos_Funcionales.md",
+    "AgroConecta/03_Sprints/Tareas.md",
+    "AgroConecta/02_IA_Prompts/Gemini.md",
+    "Sin título.canvas",
+    "Sin título.base",
+    "Sin nombre",
+    "AcomodoRentals",
+    "ChargeWay",
+    "AgroConecta",
+    "AgroConecta/04_Modulos/Modulo_Leads_B2B.md",
+    "AgroConecta/04_Modulos/Modulo_Administracion.md",
+    "AgroConecta/04_Modulos/Modulo_Autenticacion_y_Roles.md",
+    "AgroConecta/04_Modulos/Modulo_Trazabilidad_EUDR.md",
+    "AgroConecta/04_Modulos/Modulo_Monitoreo_Satelital.md",
+    "AgroConecta/04_Modulos",
+    "AgroConecta/01_Arquitectura/Frontend.md"
+  ]
+}

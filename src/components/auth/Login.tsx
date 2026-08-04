@@ -41,7 +41,7 @@ export const LoginPage = () => {
                 
                 {/* Brand Header */}
                 <div className="text-center mb-10">
-                    <img src="/logo_final.png" alt="AgroConecta" className="h-16 w-auto mb-6  " style={{ transform: "scale(2.5)" }} />
+                    <img src="/logo_final.png" alt="AgroConecta" className="h-28 w-auto mx-auto mb-6 object-contain drop-shadow-sm" />
                     <div className="flex items-center justify-center gap-3 mt-4">
                         <div className="h-px w-8 bg-white/10"></div>
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Precision Ecosystem</p>
@@ -107,7 +107,7 @@ export const LoginPage = () => {
                         <button 
                             type="submit" 
                             disabled={loading}
-                            className="w-full py-5 bg-[#1E3F20] hover:bg-emerald-400 disabled:bg-[#FAF9F7] disabled:text-slate-600 text-slate-950 rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
+                            className="w-full py-5 bg-[#1E3F20] hover:bg-emerald-600 disabled:bg-[#FAF9F7] disabled:text-slate-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.3em] transition-all shadow-2xl shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
                         >
                             {loading ? (
                                 <><div className="w-5 h-5 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin"></div> PROCESANDO...</>

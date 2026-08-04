@@ -1,6 +1,7 @@
 import os
 from fastapi import APIRouter, Request
 from analyzer import analyzer_llm, write_usage_log
+from tools import supabase
 from pydantic import BaseModel, Field
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 from google.api_core.exceptions import ResourceExhausted
@@ -71,6 +72,24 @@ async def api_batch_analyze_b2b(req: Request):
                 "crop_type": active_crop,
                 "geometry": parcel.get("geometry")
             })
+            
+            # Persist lead to database
+            if res.severity in ['Media', 'Alta']:
+                try:
+                    # Buscamos proveedor de esa categoría
+                    prov_res = supabase.table('b2b_providers').select('id').eq('category', res.category_match).limit(1).execute()
+                    if prov_res.data:
+                        provider_id = prov_res.data[0]['id']
+                        supabase.table('b2b_smart_leads').insert({
+                            "provider_id": provider_id,
+                            "parcel_id": parcel.get("id"),
+                            "category_match": res.category_match,
+                            "pre_score": res.pre_score,
+                            "status": 'New'
+                        }).execute()
+                except Exception as e:
+                    print(f"Error saving lead to db: {e}")
+                    
         except Exception as e:
             print(f"Error procesando parcela B2B {parcel.get('id')}: {e}")
             

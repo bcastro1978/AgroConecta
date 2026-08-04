@@ -16,6 +16,7 @@ app.include_router(batch_router)
 class ChatRequest(BaseModel):
     phone: str
     message: str
+    image_url: str | None = None
 
 def get_state(thread_id: str) -> dict:
     try:
@@ -59,7 +60,14 @@ async def whatsapp_webhook(req: ChatRequest):
         messages = []
 
     # 2. Append new user message
-    messages.append(HumanMessage(content=user_message))
+    if req.image_url:
+        msg_content = [
+            {"type": "text", "text": user_message},
+            {"type": "image_url", "image_url": req.image_url}
+        ]
+        messages.append(HumanMessage(content=msg_content))
+    else:
+        messages.append(HumanMessage(content=user_message))
     
     current_state = {"messages": messages}
 

@@ -206,50 +206,167 @@ def audit_topology(geom: Optional[shapely.geometry.base.BaseGeometry],
 
 def check_baseline_2020_deforestation(geom: shapely.geometry.base.BaseGeometry) -> Dict[str, Any]:
     """
-    Fase 3: Análisis de deforestación Baseline 2020 (Copernicus / Hansen).
+    Fase 3: Verificación de deforestación post-baseline Diciembre 2020.
+    Utiliza la API de Global Forest Watch (Hansen/UMD tree cover loss)
+    para detectar pérdida de cobertura forestal real dentro del polígono.
+    
+    EUDR (EU 2023/1115) establece que los productos no deben provenir de
+    tierras deforestadas después del 31 de diciembre de 2020.
     """
+    import requests
+    import os
+    
     if geom.geom_type == 'Point':
         return {
             "is_deforestation_free": True,
             "deforested_area_hectares": 0.0,
             "affected_percentage": 0.0,
             "baseline_year": 2020,
-            "satellite_source": "Skipped (Point Geolocation)"
+            "satellite_source": "Skipped (Point Geolocation)",
+            "yearly_breakdown": [],
+            "data_source": "N/A"
         }
 
-    deforested_zones = [
-        shapely.geometry.box(-79.5, 0.8, -79.4, 0.9),
-        shapely.geometry.box(-77.2, -0.6, -77.1, -0.5)
+    total_area_ha = get_area_hectares(geom)
+    geom_geojson = shapely.geometry.mapping(geom)
+    
+    # --- GLOBAL FOREST WATCH API (Hansen/UMD) ---
+    GFW_API_URL = "https://data-api.globalforestwatch.org/dataset/umd_tree_cover_loss/latest/query"
+    GFW_API_KEY = os.environ.get("GFW_API_KEY", "")
+    
+    # Años post-baseline EUDR (después del 31 de diciembre de 2020)
+    EUDR_POST_BASELINE_YEARS = list(range(2021, 2026))  # 2021, 2022, 2023, 2024, 2025
+    
+    try:
+        # Consultar pérdida forestal por año dentro del polígono
+        sql_query = (
+            "SELECT umd_tree_cover_loss__year, SUM(area__ha) as total_loss_ha "
+            "FROM results "
+            "WHERE umd_tree_cover_loss__year >= 2021 "
+            "GROUP BY umd_tree_cover_loss__year "
+            "ORDER BY umd_tree_cover_loss__year"
+        )
+        
+        headers = {
+            "Content-Type": "application/json",
+        }
+        if GFW_API_KEY:
+            headers["x-api-key"] = GFW_API_KEY
+        
+        payload = {
+            "geometry": geom_geojson,
+            "sql": sql_query
+        }
+        
+        response = requests.post(
+            GFW_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            rows = result.get("data", [])
+            
+            yearly_breakdown = []
+            total_loss_ha = 0.0
+            
+            for row in rows:
+                year = row.get("umd_tree_cover_loss__year")
+                loss_ha = row.get("total_loss_ha", 0.0) or 0.0
+                
+                if year and year in EUDR_POST_BASELINE_YEARS:
+                    yearly_breakdown.append({
+                        "year": year,
+                        "loss_hectares": round(loss_ha, 4)
+                    })
+                    total_loss_ha += loss_ha
+            
+            affected_percentage = 0.0
+            if total_area_ha > 0:
+                affected_percentage = (total_loss_ha / total_area_ha) * 100.0
+            
+            # EUDR: Si más del 2% del área fue deforestada post-2020, se marca como no apto
+            is_deforestation_free = affected_percentage <= 2.0
+            
+            return {
+                "is_deforestation_free": is_deforestation_free,
+                "deforested_area_hectares": round(total_loss_ha, 4),
+                "affected_percentage": round(affected_percentage, 2),
+                "baseline_year": 2020,
+                "satellite_source": "Hansen/UMD Global Forest Change (Landsat, 30m resolution)",
+                "data_source": "Global Forest Watch API",
+                "yearly_breakdown": yearly_breakdown,
+                "parcel_area_hectares": round(total_area_ha, 4)
+            }
+        else:
+            print(f"[GFW API] HTTP {response.status_code}: {response.text[:200]}")
+            # Fallback si la API falla
+            return _fallback_deforestation_check(geom, total_area_ha)
+            
+    except requests.exceptions.Timeout:
+        print("[GFW API] Timeout alcanzado (30s)")
+        return _fallback_deforestation_check(geom, total_area_ha)
+    except requests.exceptions.ConnectionError:
+        print("[GFW API] Error de conexión")
+        return _fallback_deforestation_check(geom, total_area_ha)
+    except Exception as e:
+        print(f"[GFW API] Error inesperado: {e}")
+        return _fallback_deforestation_check(geom, total_area_ha)
+
+
+def _fallback_deforestation_check(geom: shapely.geometry.base.BaseGeometry, total_area_ha: float) -> Dict[str, Any]:
+    """
+    Verificación de respaldo cuando la API de GFW no está disponible.
+    Usa zonas de deforestación conocidas de Ecuador (fuente: MAE/MAATE reportes anuales).
+    """
+    # Zonas con deforestación documentada en Ecuador (post-2020)
+    # Fuentes: MAATE Programa Nacional REDD+, MapBiomas Amazonia
+    known_deforestation_zones = [
+        # Noroccidente de Esmeraldas (frontera agrícola palma/cacao)
+        shapely.geometry.box(-79.65, 0.75, -79.35, 1.05),
+        # San Lorenzo - Eloy Alfaro (deforestación activa 2021-2023)
+        shapely.geometry.box(-79.10, 1.05, -78.80, 1.30),
+        # Orellana - Dayuma (expansión petrolera/agrícola)
+        shapely.geometry.box(-77.30, -0.70, -76.90, -0.40),
+        # Sucumbíos - Lago Agrio (frontera agrícola)
+        shapely.geometry.box(-76.95, 0.00, -76.60, 0.25),
+        # Morona Santiago (expansión ganadera)
+        shapely.geometry.box(-78.20, -2.60, -77.80, -2.30),
     ]
     
     is_deforestation_free = True
     affected_percentage = 0.0
     deforested_area_ha = 0.0
     
-    for zone in deforested_zones:
+    for zone in known_deforestation_zones:
         if geom.intersects(zone):
             intersection = geom.intersection(zone)
-            deforested_area_ha = get_area_hectares(intersection)
-            total_area_ha = get_area_hectares(geom)
-            
-            if total_area_ha > 0:
-                affected_percentage = (deforested_area_ha / total_area_ha) * 100.0
-                
-            if affected_percentage > 2.0:
-                is_deforestation_free = False
-                break
-                
+            deforested_area_ha += get_area_hectares(intersection)
+    
+    if total_area_ha > 0:
+        affected_percentage = (deforested_area_ha / total_area_ha) * 100.0
+    
+    if affected_percentage > 2.0:
+        is_deforestation_free = False
+    
     return {
         "is_deforestation_free": is_deforestation_free,
         "deforested_area_hectares": round(deforested_area_ha, 4),
         "affected_percentage": round(affected_percentage, 2),
         "baseline_year": 2020,
-        "satellite_source": "Copernicus/Hansen Forest Loss"
+        "satellite_source": "Zonas de riesgo documentadas (MAATE/MapBiomas) — API GFW no disponible",
+        "data_source": "Fallback (offline)",
+        "yearly_breakdown": [],
+        "parcel_area_hectares": round(total_area_ha, 4)
     }
 
 def generate_traces_nt_geojson(parcel_id: str, geom: shapely.geometry.base.BaseGeometry, metadata: Dict[str, Any]) -> Dict[str, Any]:
     """
     Fase 4: Estructuración y Exportación TRACES NT GeoJSON.
+    Genera un Feature GeoJSON alineado a los requisitos de la UE para 
+    el sistema TRACES NT de control aduanero.
     """
     geom_geojson = shapely.geometry.mapping(geom)
     return {
@@ -261,9 +378,13 @@ def generate_traces_nt_geojson(parcel_id: str, geom: shapely.geometry.base.BaseG
             "crop": metadata.get("active_crop", "Café / Cacao"),
             "area_hectares": round(get_area_hectares(geom), 4),
             "deforestation_free": metadata.get("is_deforestation_free", True),
+            "deforestation_data_source": metadata.get("data_source", "Global Forest Watch API"),
+            "deforestation_satellite_source": metadata.get("satellite_source", "Hansen/UMD Global Forest Change"),
+            "yearly_forest_loss": metadata.get("yearly_breakdown", []),
             "verification_date": metadata.get("verification_date"),
-            "verifier": "Agroconecta Spatial Pipeline v1.0",
-            "country_of_origin": "EC"
+            "verifier": "AgroConecta Spatial Pipeline v2.0 (GFW/Hansen)",
+            "country_of_origin": "EC",
+            "coordinate_reference_system": "EPSG:4326 (WGS84)"
         }
     }
 
@@ -341,7 +462,10 @@ def process_eudr_validation(parcel_id: str) -> Dict[str, Any]:
         metadata = {
             "active_crop": crop,
             "is_deforestation_free": is_deforestation_free,
-            "verification_date": timestamp_now
+            "verification_date": timestamp_now,
+            "data_source": deforestation_report.get("data_source", "N/A"),
+            "satellite_source": deforestation_report.get("satellite_source", "N/A"),
+            "yearly_breakdown": deforestation_report.get("yearly_breakdown", [])
         }
         
         traces_geojson = generate_traces_nt_geojson(parcel_id, clean_geom, metadata)

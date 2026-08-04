@@ -8,13 +8,14 @@ import { AssociationInbox } from '../market/AssociationInbox';
 import { ProducerParcels } from './copernicus/ProducerParcels';
 import { AgronomicHealth } from './copernicus/AgronomicHealth';
 import { CropDiscovery } from './copernicus/CropDiscovery';
+import { NationalMarketAnalytics } from '../market/NationalMarketAnalytics';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/button';
-import { LogOut, PlusCircle, Inbox, TrendingUp, Target, Users, Map, Activity, BrainCircuit, Sparkles } from 'lucide-react';
+import { LogOut, PlusCircle, Inbox, TrendingUp, Target, Users, Map, Activity, BrainCircuit, Sparkles, BarChart3 } from 'lucide-react';
 
 export const ProducerDashboard = () => {
     const { profile } = useAuth();
-    const [activeTab, setActiveTab] = useState<'publish' | 'quotes' | 'opportunities' | 'associations' | 'map' | 'discovery'>('publish');
+    const [activeTab, setActiveTab] = useState<'publish' | 'quotes' | 'opportunities' | 'associations' | 'map' | 'discovery' | 'analytics'>('publish');
     const [parcelToEdit, setParcelToEdit] = useState<any>(null);
 
     return (
@@ -25,7 +26,7 @@ export const ProducerDashboard = () => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-6">
                     <div className="space-y-2">
                         <div className="flex items-center">
-                            <img src="/logo_final.png" alt="AgroConecta" className="h-24 w-auto  " style={{ transform: "scale(2.5)" }} />
+                            <img src="/logo_final.png" alt="AgroConecta" className="h-20 w-auto object-contain drop-shadow-sm" />
                         </div>
                     </div>
                     
@@ -58,16 +59,17 @@ export const ProducerDashboard = () => {
                         { id: 'publish', label: 'Publicar', icon: PlusCircle },
                         { id: 'quotes', label: 'Cotizaciones', icon: Inbox },
                         { id: 'opportunities', label: 'Mercado', icon: Target },
+                        { id: 'analytics', label: 'Análisis Nacional', icon: BarChart3 },
                         { id: 'associations', label: 'Asociaciones', icon: Users },
-                        { id: 'map', label: 'Mapa CDSE', icon: Map },
+                        { id: 'map', label: 'Mapeo Parcelas', icon: Map },
                         { id: 'discovery', label: 'Discovery IA', icon: BrainCircuit },
                     ].map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
                             className={`flex items-center gap-2 py-3 px-8 text-sm font-black rounded-full transition-all duration-500 uppercase tracking-tight ${activeTab === tab.id
-                                ? 'bg-[#1E3F20] text-slate-950 shadow-2xl shadow-[#1E3F20]/20 scale-105'
-                                : 'text-slate-500 hover:text-[#FAF9F7] hover:bg-[#0A0A0A]/5'
+                                ? 'bg-[#1E3F20] text-white shadow-2xl shadow-[#1E3F20]/20 scale-105'
+                                : 'text-slate-500 hover:text-[#0A0A0A] hover:bg-[#0A0A0A]/5'
                                 }`}
                         >
                             <tab.icon className="w-4 h-4" />
@@ -114,6 +116,10 @@ export const ProducerDashboard = () => {
                                         <p className="text-[#57534E] text-sm font-medium mt-2">Gestiona alianzas locales para cumplir contratos de gran escala.</p>
                                     </div>
                                     <AssociationInbox />
+                                </div>
+                            ) : activeTab === 'analytics' ? (
+                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                    <NationalMarketAnalytics />
                                 </div>
                             ) : activeTab === 'discovery' ? (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">

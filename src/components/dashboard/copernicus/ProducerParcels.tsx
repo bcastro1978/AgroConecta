@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../auth/AuthProvider';
 import { MapContainer, TileLayer, GeoJSON, useMapEvents, Polygon, CircleMarker, useMap, ImageOverlay, Polyline } from 'react-leaflet';
-import { LatLngTuple } from 'leaflet';
+import type { LatLngTuple } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Leaf, MapPin, Undo2, Trash2, CheckCircle2, Navigation, Edit2, Eye, X, FileCheck, Info, Satellite, Layers, AlertTriangle } from 'lucide-react';
 import { ECUADOR_LOCATIONS } from '../../../lib/locationData';
@@ -115,9 +115,34 @@ export const ProducerParcels = ({
     const [showGpsPreview, setShowGpsPreview] = useState(false);
     const [editingGpsPoint, setEditingGpsPoint] = useState<number | null>(null);
 
+    const [producerCatalog, setProducerCatalog] = useState<any[]>([]);
+
     useEffect(() => {
         fetchParcels();
+        fetchProducerCatalog();
     }, []);
+
+    const fetchProducerCatalog = async () => {
+        const { data, error } = await supabase.from('products_catalog').select('*').order('name');
+        if (!error && data) {
+            // Filtrar productos agrícolas de producción
+            const producerItems = data.filter(p => {
+                const cat = (p.category || '').toLowerCase();
+                return cat.includes('agroexportación') || 
+                       cat.includes('cereales') || 
+                       cat.includes('tubérculos') || 
+                       cat.includes('frutas') || 
+                       cat.includes('hortalizas') || 
+                       cat.includes('pecuario') ||
+                       cat.includes('productor') ||
+                       cat.includes('granos') ||
+                       cat.includes('raíces') ||
+                       cat.includes('plátano') ||
+                       cat.includes('legumbres');
+            });
+            setProducerCatalog(producerItems.length > 0 ? producerItems : data);
+        }
+    };
 
     // Escuchar solicitudes de edición externa
     useEffect(() => {
@@ -134,7 +159,7 @@ export const ProducerParcels = ({
         if (!user) return;
         const { data, error } = await supabase.from('parcels').select(`
             *,
-            sat_telemetry ( id, parcel_id, created_at, timestamp, mission, ndvi_avg, image_base64, image_bounds ),
+            sat_telemetry ( id, parcel_id, created_at, timestamp, mission, ndvi_avg, image_bounds ),
             alerts_events ( * )
         `).eq('producer_id', user.id).order('created_at', { ascending: false });
         
@@ -377,8 +402,23 @@ export const ProducerParcels = ({
         }
     };
 
-    const viewParcelOnMap = (p: any) => {
+    const viewParcelOnMap = async (p: any) => {
         setViewingParcel(p);
+        
+        // Lazy load the heavy base64 image if it exists and hasn't been loaded yet
+        if (p.latest_telemetry && !p.latest_telemetry.image_base64) {
+            const { data: imgData } = await supabase
+                .from('sat_telemetry')
+                .select('image_base64')
+                .eq('id', p.latest_telemetry.id)
+                .single();
+                
+            if (imgData) {
+                p.latest_telemetry.image_base64 = imgData.image_base64;
+                setViewingParcel({ ...p }); // force re-render with image
+            }
+        }
+
         const geom = p.geometry;
         if (geom && geom.coordinates && geom.coordinates[0] && geom.coordinates[0].length > 0) {
             const firstCoord = geom.coordinates[0][0];
@@ -434,14 +474,37 @@ export const ProducerParcels = ({
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-[10px] font-black text-[#1E3F20] uppercase tracking-widest mb-1.5 ml-1">Identificador del Cultivo</label>
-                                <input 
-                                    type="text" 
-                                    className="w-full bg-[#FAF9F7]/50 border border-[#0A0A0A]/10 rounded-2xl px-5 py-3.5 text-[#0A0A0A] placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 outline-none transition-all font-bold"
-                                    placeholder="Ej. Cacao Nacional Arriba"
-                                    value={crop}
-                                    onChange={(e) => setCrop(e.target.value)}
-                                />
+                                <label className="block text-[10px] font-black text-[#1E3F20] uppercase tracking-widest mb-1.5 ml-1">
+                                    Cultivo de la Parcela (Catálogo de Productos)
+                                </label>
+                                <div className="relative">
+                                    <select 
+                                        className="w-full bg-[#FAF9F7] border border-[#0A0A0A]/10 rounded-2xl px-5 py-3.5 text-[#0A0A0A] font-bold focus:ring-2 focus:ring-[#1E3F20]/20 focus:border-[#1E3F20] outline-none transition-all cursor-pointer appearance-none"
+                                        value={crop}
+                                        onChange={(e) => setCrop(e.target.value)}
+                                    >
+                                        <option value="" className="bg-white">Seleccionar Cultivo del Catálogo...</option>
+                                        {Object.entries(
+                                            producerCatalog.reduce((acc, p) => {
+                                                const cat = p.category || 'Otros Cultivos';
+                                                if (!acc[cat]) acc[cat] = [];
+                                                acc[cat].push(p);
+                                                return acc;
+                                            }, {} as Record<string, any[]>)
+                                        ).map(([category, items]: [string, any]) => (
+                                            <optgroup key={category} label={category} className="bg-slate-100 font-bold text-xs text-[#1E3F20] uppercase">
+                                                {items.map((p: any) => (
+                                                    <option key={p.id} value={p.name} className="bg-white text-[#0A0A0A] font-medium py-1">
+                                                        {p.name} — ({p.unit})
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        ))}
+                                    </select>
+                                    <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                        <Leaf size={16} className="text-[#1E3F20]" />
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="bg-[#FAF9F7]/40 border border-[#0A0A0A]/10 rounded-2xl p-4 space-y-3">
