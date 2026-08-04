@@ -105,11 +105,29 @@ export const AgronomicHealth = ({ onEditParcel = () => {} }: { onEditParcel?: (p
 
             setLoading(true);
             
-            // Eliminar registros de telemetría y alertas vinculadas
-            await supabase.from('sat_telemetry').delete().eq('parcel_id', parcelId);
-            await supabase.from('alerts_events').delete().eq('parcel_id', parcelId);
-            
-            // Eliminar la parcela
+            // 1. Eliminar registros de telemetría por ID primario
+            const { data: telRows } = await supabase
+                .from('sat_telemetry')
+                .select('id')
+                .eq('parcel_id', parcelId);
+
+            if (telRows && telRows.length > 0) {
+                const telIds = telRows.map(t => t.id);
+                await supabase.from('sat_telemetry').delete().in('id', telIds);
+            }
+
+            // 2. Eliminar eventos de alertas por ID primario
+            const { data: alertRows } = await supabase
+                .from('alerts_events')
+                .select('id')
+                .eq('parcel_id', parcelId);
+
+            if (alertRows && alertRows.length > 0) {
+                const alertIds = alertRows.map(a => a.id);
+                await supabase.from('alerts_events').delete().in('id', alertIds);
+            }
+
+            // 3. Eliminar la parcela
             const { error: delErr } = await supabase.from('parcels').delete().eq('id', parcelId);
             if (delErr) throw delErr;
 
